@@ -18,3 +18,9 @@ In case you are not familiar with using Git, here are some pointers and guidelin
 * Although it's useful to know how to use Git from the command line, a GUI tool can be useful. I recommend:
     - Mac OS X: [SourceTree](http://www.sourcetreeapp.com/)
     - Window and Linux (also runs on OS X): [SmartGit](http://www.syntevo.com/smartgithg/index.html)
+
+Team Members
+------------
+
+* Simon Broadhead (4th year Computer Science) <sbroadhead@gmail.com>
+* Your name here...
