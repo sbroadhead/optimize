@@ -8,6 +8,8 @@ In case you are not familiar with using Git, here are some pointers and guidelin
 * Don't commit all your changes at once. Git supports committing individual chunks or even lines of files
   in a single commit, so group them into related sets of changes, possibly making several commits. This keeps
   the revision history clean and lets us keep track of where each individual line of code originated.
+* Don't check in binaries unless there is no source code available (i.e., you can check in a research paper as a PDF but
+  don't check in the generated PDF of the report).
 * Commit very often (as in every ten minutes if possible). Any time you make a change that you can adequately describe
   in a single sentence, commit it. The changes aren't pushed to github until you explicitly issue a push command so it
   all happens locally.
