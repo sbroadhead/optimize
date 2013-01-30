@@ -7,6 +7,7 @@ In case you are not familiar with using Git, here are some pointers and guidelin
 * Read or skim the first two chapters of [this](http://git-scm.com/book) to get familiar with how Git works and in
   particular how it is different from svn.
 * **Don't use `git rebase` on commits that you have pushed to github. This will break things and it will be a pain to fix.**
+* **Never use `push -f` to force a conflicting push to the remote repository. This will overwrite the history and break everyone's checked-out code. Fix your local repository and then push when there are no conflicts.**
 * You can fork this repository into your own github account and do development there, using the github Pull Request
   feature to bring changes back into the main repository. Forks of this repository will remain private. Both features
   are available at the top of the repository page.
@@ -24,6 +25,7 @@ In case you are not familiar with using Git, here are some pointers and guidelin
 * Don't be afraid to create a branch if you want to work on changing some code without disturbing what is already there.
 * When you push to github, you might want to [squash](http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html) some of your commits into larger commits, if you have several
   commits that relate to a single feature. This keeps the revision history less cluttered.
+* Don't push broken code to the repository, and if you commit broken code to your own repository, squash the broken commits into a single working commit before pushing it.
 * Although it's useful to know how to use Git from the command line, a GUI tool can be useful. I recommend:
     - Mac OS X: [SourceTree](http://www.sourcetreeapp.com/)
         - Xcode is not good for this because it abstracts most of Git's useful functionality away
