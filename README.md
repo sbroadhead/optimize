@@ -35,4 +35,5 @@ Team members
 ------------
 
 * Simon Broadhead (4th year Computer Science) <sbroadhead@gmail.com>
+* JD Cumpson (4th year Mechatronics) <cumpsonjd@gmail.com>
 * Your name here...
