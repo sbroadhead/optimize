@@ -10,8 +10,9 @@ endif(NOT SDL_TTF_FOUND)
 
 set(ICEBURG_SRCS
     main.c
-    render.c
     parser.c
+    problem.c
+    render.c
     scanner.c
 )
 

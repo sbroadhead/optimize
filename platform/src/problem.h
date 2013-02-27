@@ -45,5 +45,7 @@ typedef struct {
     problem_t *problem;
 } problem_state_t;
 
+void get_render_extents(problem_state_t *problem_state, double *x1, double *y1, double *x2, double *y2);
+
 #endif
 
