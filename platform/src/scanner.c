@@ -135,8 +135,9 @@ void scan_next_char(scanner_t *sc)
 int scan_unsigned_number_literal(scanner_t *sc)
 {
     int is_double = 0;
-    double val = sc->val;
+    double val;
     scan_dec_literal(sc);
+    val = sc->val;
     if (sc->ch == '.') {
         scan_next_char(sc);
         is_double = 1;
@@ -155,11 +156,9 @@ int scan_unsigned_number_literal(scanner_t *sc)
 int scan_number_literal(scanner_t *sc)
 {
     int r;
+    
     if (sc->ch == '-') {
         scan_next_char(sc);
-        if (!(sc->ch >= '0' && sc->ch <= '9')) {
-            fail(sc, "Expected %s", token_name(T_NUMBER));
-        }
         r = scan_unsigned_number_literal(sc);
         sc->val = -sc->val;
         return r;
@@ -278,7 +277,7 @@ void scan_next_token(scanner_t *sc)
         case ';': sc->token = T_SEMICOLON; scan_next_char(sc); break;
         case '"': scan_string_literal(sc); sc->token = T_STRING; break;
         case '1': case '2': case '3': case '4': case '5': case '6':
-        case '7': case '8': case '9': case '0': case '-':
+        case '7': case '8': case '9': case '0': case '-': case '.':
             scan_number_literal(sc);
             sc->token = T_NUMBER;
             break;
@@ -291,7 +290,7 @@ void scan_next_token(scanner_t *sc)
         case 'G': case 'H': case 'I': case 'J': case 'K': case 'L':
         case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
         case 'S': case 'T': case 'U': case 'V': case 'W': case 'X':
-        case 'Y': case 'Z': case '_': case '.': case '+': case '@':
+        case 'Y': case 'Z': case '_': case '+': case '@':
             sc->token = T_IDENT;
             scan_ident(sc);
             break;
