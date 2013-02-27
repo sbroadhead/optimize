@@ -6,6 +6,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
 
 find_package(SDL REQUIRED)
 find_package(SDL_ttf REQUIRED)
+find_package(OpenGL REQUIRED)
 include_directories(${SDL_INCLUDE_DIR})
 include_directories(${SDL_TTF_INCLUDE_DIRS})
 
