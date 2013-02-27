@@ -19,13 +19,6 @@ void init_render(problem_state_t *state)
     double extra;
     double aspect = (double)WINDOW_WIDTH / (double)WINDOW_HEIGHT;
 
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-
-    glDisable(GL_DEPTH_TEST);
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     /* Fit the whole problem on screen */
@@ -53,6 +46,11 @@ void init_render(problem_state_t *state)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(x1 - 1.0, x2 + 1.0, y1 - 1.0, y2 + 1.0, -1.0, 1.0);
+
+    state->x1 = x1 - 1.0;
+    state->x2 = x2 + 1.0;
+    state->y1 = y1 - 1.0;
+    state->y2 = y2 + 1.0;
     
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -64,9 +62,10 @@ void init_render(problem_state_t *state)
 void render(problem_state_t *state)
 {
     int i;
+    double j;
 
-    glClearColor(0, 0, 0.2, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0.0, 0.0, 0.0, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     /* Draw the current position */
     glColor3d(1.0, 0.0, 1.0);
@@ -81,10 +80,45 @@ void render(problem_state_t *state)
     glPopMatrix();
 
     /* Draw the polygons */
-    glColor3d(0.0, 1.0, 0.0);
+    glColor3d(1.0, 0.0, 0.0);
     for (i = 0; i < state->problem->polygon_count; i++) {
         draw_polygon((double *)state->problem->polygons[i].points, state->problem->polygons[i].point_count);
     }
+    
+    /* Stencil the polygons */
+    glClearStencil(0);
+    glColorMask(0, 0, 0, 0);
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_ALWAYS, 1, 1);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    for (i = 0; i < state->problem->polygon_count; i++) {
+        fill_polygon((double *)state->problem->polygons[i].points, state->problem->polygons[i].point_count);
+    }
+    glStencilFunc(GL_EQUAL, 1, 1);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glColorMask(1, 1, 1, 1);
+
+    /* Draw the pattern in the polygons */
+    glColor3d(1.0, 0.0, 0.0);
+    glLineStipple(1, 0x2222);
+    glEnable(GL_LINE_STIPPLE);
+    glPushMatrix();
+    for (j = state->x1; j < state->x2; j += 0.25) {
+        glBegin(GL_LINES);
+            glVertex2d(j, state->y1);
+            glVertex2d(j, state->y2);
+        glEnd();
+    }
+    for (j = state->y1; j < state->y2; j += 0.25) {
+        glBegin(GL_LINES);
+            glVertex2d(state->x1, j);
+            glVertex2d(state->x2, j);
+        glEnd();
+    }
+    glDisable(GL_LINE_STIPPLE);
+    glPopMatrix();
+
+    glDisable(GL_STENCIL_TEST);
 }
 
 /*
@@ -132,6 +166,13 @@ int run(problem_state_t *state)
         printf("Could not initialize SDL\n");
         return 1;
     }
+
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
 
     /* Create and initialize the window */
     window = SDL_SetVideoMode(WINDOW_WIDTH, WINDOW_HEIGHT, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_OPENGL);

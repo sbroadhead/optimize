@@ -43,6 +43,8 @@ typedef struct {
     point_t current_pos;
     double current_angle;
     problem_t *problem;
+
+    double x1, y1, x2, y2; /* view extents */
 } problem_state_t;
 
 void get_render_extents(problem_state_t *problem_state, double *x1, double *y1, double *x2, double *y2);

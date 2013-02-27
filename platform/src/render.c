@@ -26,30 +26,34 @@ void draw_vector(double x, double y, double length, double angle)
 }
 
 /*
- * Draw a polygon
+ * Draw a filled polygon
  */
-void draw_polygon(double *pts, int count)
+void fill_polygon(double *pts, int count)
 {
-    double color[4];
     int i;
 
     glPushMatrix();
-
-    glBegin(GL_LINE_LOOP);
-        for (i = 0; i < count; i++) {
-            glVertex2d(pts[2*i], pts[2*i+1]);
-        }
-    glEnd();
-
-    glGetDoublev(GL_CURRENT_COLOR, color);
-    glColor4d(color[0], color[1], color[2], 0.25);
-    
     glBegin(GL_POLYGON);
         for (i = 0; i < count; i++) {
             glVertex2d(pts[2*i], pts[2*i+1]);
         }
     glEnd();
-
-    glColor4d(color[0], color[1], color[2], color[3]);
     glPopMatrix();
 }
+
+/*
+ * Draw a wireframe polygon
+ */
+void draw_polygon(double *pts, int count)
+{
+    int i;
+
+    glPushMatrix();
+    glBegin(GL_LINE_LOOP);
+        for (i = 0; i < count; i++) {
+            glVertex2d(pts[2*i], pts[2*i+1]);
+        }
+    glEnd();
+    glPopMatrix();
+}
+
