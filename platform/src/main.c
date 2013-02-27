@@ -47,6 +47,9 @@ void init_render(problem_state_t *state)
     printf("Setting render extents to:\n    %.2f, %.2f, %.2f, %.2f\n",
             x1 - 1.0, y1 - 1.0, x2 + 1.0, y2 + 1.0);
 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(x1 - 1.0, x2 + 1.0, y1 - 1.0, y2 + 1.0, -1.0, 1.0);
