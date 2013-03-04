@@ -37,4 +37,5 @@ Team members
 * Simon Broadhead (4th year Computer Science) <sbroadhead@gmail.com>
 * JD Cumpson (4th year Mechatronics) <cumpsonjd@gmail.com>
 * Jeremy Cski (1st year MEng) <conchoss@yahoo.com> **HEHEHE I know how to bold text.  In your face.**
+* Subramanian Venkatesan (1st MEng) <subramanian.bsv@gmail.com>
 * Your name here...
