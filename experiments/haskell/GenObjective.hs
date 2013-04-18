@@ -10,7 +10,7 @@ data OptState
     = MkOptState
     { os_varcount :: Integer
     , os_objective :: Expr
-    , os_vars :: Map (VarDef, Integer) Expr
+    , os_vars :: Map Integer Expr
     }
     deriving (Show, Eq, Ord)
 
@@ -39,8 +39,11 @@ evalQuantifier s i (Div x y) = Div (evalQuantifier s i x) (evalQuantifier s i y)
 evalQuantifier s i (Sin x) = Sin (evalQuantifier s i x)
 evalQuantifier s i (Cos x) = Cos (evalQuantifier s i x)
 evalQuantifier s i (Negate x) = Negate (evalQuantifier s i x)
-evalQuantifier s i (QuantifiedVar v (BoundVar s' off))
-    | s == s' = Var v (i+off)
+evalQuantifier s i (QuantifiedVar v@(VarDef x) (BoundVar s' off))
+    | s == s' = Var (x+i+off)
+    | otherwise = QuantifiedVar v (BoundVar s' off)
+evalQuantifier s i (QuantifiedVar v@(ArrayDef n x) (BoundVar s' off))
+    | s == s' = Var (n+i+off)
     | otherwise = QuantifiedVar v (BoundVar s' off)
 evalQuantifier _ _ x = x
 
@@ -53,17 +56,18 @@ class Assignable a where
     ($=) :: a -> Expr -> Opt ()
 
 instance Assignable Expr where
-    (Var v i) $= e = do
+    (Var i) $= e = do
         vars <- gets os_vars
-        case Map.lookup (v, i) vars of
-            Just _ -> error $ "Variable already defined: " ++ show (v, i)
-            Nothing -> modify $ \s -> s { os_vars = Map.insert (v, i) e vars }
+        case Map.lookup i vars of
+            Just _ -> error $ "Variable already defined: " ++ show i
+            Nothing -> modify $ \s -> s { os_vars = Map.insert i e vars }
     x $= _ = error $ "Trying to assign to a non-variable: " ++ show x
 
 infixr 1 $=
 
 instance Assignable Quantifier where
-    (Quantifier v s range) $= e = forM_ range $ \i -> (Var v i) $= (evalQuantifier s i e)
+    (Quantifier (VarDef x) s range) $= _ = error "Quantifying over non-array on left hand side"
+    (Quantifier (ArrayDef n x) s range) $= e = forM_ range $ \i -> (Var (n+i)) $= (evalQuantifier s i e)
         
 class VarIndex a where
     type VarDeref a :: *
@@ -74,9 +78,9 @@ instance VarIndex Integer where
     deref (ArrayDef x n) i
         | i < 0 = error "Array index < 0"
         | i >= n = error $ "Array index >= " ++ show n
-        | otherwise = Var (ArrayDef x n) i
+        | otherwise = Var (x+i)
     deref (VarDef x) i
-        | i == 0 = Var (VarDef x) i
+        | i == 0 = Var x
         | otherwise = error "Dereferencing a non-array"
 
 instance VarIndex QuantifierRange where
@@ -127,7 +131,7 @@ data Expr
     | Sin Expr
     | Cos Expr
     | Negate Expr
-    | Var VarDef Integer
+    | Var Integer
     | QuantifiedVar VarDef BoundVar
     deriving (Show, Eq, Ord)
 
