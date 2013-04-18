@@ -57,3 +57,22 @@ void draw_polygon(double *pts, int count)
     glPopMatrix();
 }
 
+/*
+ * Draw a circle
+ */
+void draw_circle(double x, double y, double radius)
+{
+    const int num_points = 16;
+    double t;
+    int i;
+
+    glPushMatrix();
+    glTranslated(x, y, 0.0);
+    glBegin(GL_LINE_LOOP);
+        for (i = 0; i < num_points; i++) {
+            t = 2 * M_PI * ((double)i / num_points);
+            glVertex2d(radius * cos(t), radius * sin(t));
+        }
+    glEnd();
+    glPopMatrix();
+}

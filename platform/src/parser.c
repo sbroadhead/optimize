@@ -78,6 +78,8 @@ int parse_problem_file(FILE *file, problem_t *problem)
             problem->end_pos = parse_point(&sc);
         } else if (strcmp(name, "end-angle") == 0) {
             problem->end_angle = expect(&sc, T_NUMBER);
+        } else if (strcmp(name, "radius") == 0) {
+            problem->radius = expect(&sc, T_NUMBER);
         } else if (strcmp(name, "polygons") == 0) {
             poly = problem->polygons;
 

@@ -31,6 +31,7 @@ typedef struct {
     double start_angle;
     point_t end_pos;
     double end_angle;
+    double radius;
     polygon_t polygons[MAX_POLYGONS];
     int polygon_count;
 } problem_t;

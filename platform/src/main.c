@@ -69,15 +69,12 @@ void render(problem_state_t *state)
 
     /* Draw the current position */
     glColor3d(1.0, 0.0, 1.0);
-    glPushMatrix();
     draw_vector(state->current_pos.x, state->current_pos.y, 0.25, state->current_angle);
-    glPopMatrix();
+    draw_circle(state->current_pos.x, state->current_pos.y, state->problem->radius);
 
     /* Draw the destination */
     glColor3d(0.0, 1.0, 1.0);
-    glPushMatrix();
     draw_vector(state->problem->end_pos.x, state->problem->end_pos.y, 0.25, state->problem->end_angle);
-    glPopMatrix();
 
     /* Draw the polygons */
     glColor3d(1.0, 0.0, 0.0);

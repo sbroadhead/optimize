@@ -17,6 +17,7 @@
 void draw_vector(double x, double y, double length, double angle);
 void fill_polygon(double *pts, int count);
 void draw_polygon(double *pts, int count);
+void draw_circle(double x, double y, double radius);
 
 #endif
 
