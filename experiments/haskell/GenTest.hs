@@ -58,7 +58,15 @@ opt3 = do
 
     minimize $ a.*.a .+. b.*.b .+. con 6.0 .*. c .*. c .+. con 7.0
 
-opt' = execOpt opt2
+-- Banana function
+opt4 = do
+    x <- array 6
+
+    let t1 = (con 1.0 .-. (x~~i))
+    let t2 = ((x~~(i@+1)) .-. (x~~i).*.(x~~i))
+    minimize $ sum' i [0..4] $ t1 .*. t1 .+. con 100.0 .*. t2 .*. t2
+
+opt' = execOpt opt4
 objective = simplify $ substitute (os_vars opt') $ os_objective opt'
 vars = varsOf objective
 gradient = Map.map simplify $ grad (Set.toList vars) objective

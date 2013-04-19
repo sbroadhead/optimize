@@ -62,6 +62,7 @@ makeGraph' q@(Div a b) = do { x <- makeGraph' a; y <- makeGraph' b; z <- addOrGe
 makeGraph' q@(Sin a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (SinT x); return z }
 makeGraph' q@(Cos a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (CosT x); return z }
 makeGraph' q@(Log a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (LogT x); return z }
+makeGraph' q@(Negate a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (NegateT x); return z }
 makeGraph' q@(Var i) = do { z <- addOrGet q; makeGraphNode z (VarT i); return z }
 
 makeGraph :: Expr -> (Int, IntMap ExprGraph)
@@ -104,6 +105,7 @@ toC (DivT a b) _ = varName a ++ "/" ++ varName b
 toC (SinT a) _ = "sin(" ++ varName a ++ ")"
 toC (CosT a) _ = "cos(" ++ varName a ++ ")"
 toC (LogT a) _ = "log(" ++ varName a ++ ")"
+toC (NegateT a) _ = "-" ++ varName a
 toC (VarT i) vars = "x[" ++ (show $ vars Map.! i) ++ "]"
 
 genDecls :: [Int] -> IntMap ExprGraph -> Map Integer Integer -> [String]
