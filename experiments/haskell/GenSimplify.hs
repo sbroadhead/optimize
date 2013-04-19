@@ -15,10 +15,15 @@ simplify expr = simplify' expr 0
                 then simplify' expr' (n+1)
                 else expr'
 
-exprSort (Add a b) = if a < b then Add a b else Add b a 
-exprSort (Sub a b) = if a < b then Sub a b else Sub b a
-exprSort (Mul a b) = if a < b then Mul a b else Mul b a
-exprSort (Div a b) = if a < b then Div a b else Div b a
+exprSort (Add (Const a) (Const b)) = if a < b then Add (Const a) (Const b) else Add (Const b) (Const a)
+exprSort (Add (Const a) b) = Add (Const a) (exprSort b)
+exprSort (Add a (Const b)) = Add (Const b) (exprSort a)
+exprSort (Add (Var a) (Var b)) = if a < b then Add (Var a) (Var b) else Add (Var a) (Var b)
+
+exprSort (Mul (Const a) (Const b)) = if a < b then Mul (Const a) (Const b) else Mul (Const b) (Const a)
+exprSort (Mul (Const a) b) = Mul (Const a) (exprSort b)
+exprSort (Mul a (Const b)) = Mul (Const b) (exprSort a)
+exprSort (Mul (Var a) (Var b)) = if a < b then Mul (Var a) (Var b) else Mul (Var a) (Var b)
 exprSort x = x
 
 -- Collecting like terms in addition
@@ -38,26 +43,44 @@ trySimplify (Negate (Const a)) = (True, Const $ (-a))
 -- Additive identity
 trySimplify (Add (Const 0.0) e) = (True, exprSort e)
 trySimplify (Add e (Const 0.0)) = (True, exprSort e)
+trySimplify (Sub (Const 0.0) e) = (True, Negate $ exprSort e)
+trySimplify (Sub e (Const 0.0)) = (True, exprSort e)
 -- Multiplicative identity
 trySimplify (Mul (Const 1.0) e) = (True, exprSort e)
 trySimplify (Mul e (Const 1.0)) = (True, exprSort e)
 trySimplify (Div e (Const 1.0)) = (True, exprSort e)
--- Multiplicative inverse
+-- Multiplicative zero
 trySimplify (Mul (Const 0.0) e) = (True, Const 0.0)
 trySimplify (Mul e (Const 0.0)) = (True, Const 0.0)
+-- Reassociate multiplication to the left
+trySimplify (Mul a (Mul b c)) = (True, Mul (Mul a b) c)
 -- Recursive simplification
 trySimplify (Add a b) =
-    let (l, a') = trySimplify $ exprSort a
-        (r, b') = trySimplify $ exprSort b
-        (s, c') = tryCollect a' b'
+    let (p, q) =
+            -- Reassociate addition to the left
+            case (a, b) of
+                (Add x y, z) -> (a, b)
+                (x, Add y z) -> (Add x y, z)
+                _ -> (a, b)
+        (l, a') = trySimplify $ exprSort p
+        (r, b') = trySimplify $ exprSort q
+        (l', a'') = trySimplify $ exprSort a
+        (r', b'') = trySimplify $ exprSort b
+        (s, c') = tryCollect a'' b'' --try collecting before reassociating
     in (l || r || s, if s then c' else Add a' b')
 trySimplify (Sub a b) =
     let (l, a') = trySimplify $ exprSort a
         (r, b') = trySimplify $ exprSort b
     in (l || r, Sub a' b')
 trySimplify (Mul a b) =
-    let (l, a') = trySimplify $ exprSort a
-        (r, b') = trySimplify $ exprSort b
+    let (p, q) =
+            -- Reassociate multiplication to the left
+            case (a, b) of
+                (Mul x y, z) -> (a, b)
+                (x, Mul y z) -> (Mul x y, z)
+                _ -> (a, b)
+        (l, a') = trySimplify $ exprSort p
+        (r, b') = trySimplify $ exprSort q
     in (l || r, Mul a' b')
 trySimplify (Div a b) =
     let (l, a') = trySimplify $ exprSort a

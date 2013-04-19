@@ -91,4 +91,44 @@ topSort exprs = topSort' exprs Set.empty []
                     else sorted
             False ->
                 let i = head leaves
-                in topSort' (IntMap.delete i exprs) (Set.insert i seen) (sorted++[i]) 
+                in topSort' (IntMap.delete i exprs) (Set.insert i seen) (sorted++[i])
+
+varName i = "var" ++ show i
+
+toC :: ExprGraph -> Map Integer Integer -> String
+toC (ConstT d) _ = show d
+toC (AddT a b) _ = varName a ++ "+" ++ varName b
+toC (SubT a b) _ = varName a ++ "-" ++ varName b
+toC (MulT a b) _ = varName a ++ "*" ++ varName b
+toC (DivT a b) _ = varName a ++ "/" ++ varName b
+toC (SinT a) _ = "sin(" ++ varName a ++ ")"
+toC (CosT a) _ = "cos(" ++ varName a ++ ")"
+toC (LogT a) _ = "log(" ++ varName a ++ ")"
+toC (VarT i) vars = "x[" ++ (show $ vars Map.! i) ++ "]"
+
+genDecls :: [Int] -> IntMap ExprGraph -> Map Integer Integer -> [String]
+genDecls [] _ _ = []
+genDecls (x:xs) exprs vars = ["double " ++ varName x ++ " = " ++ toC (exprs IntMap.! x) vars ++ ";"] ++ genDecls xs exprs vars
+
+mapVars :: Expr -> Map Integer Integer
+mapVars expr = Map.fromList $ zip (Set.toList $ varsOf expr) [0..]
+
+genCode :: Expr -> Map Integer Expr -> String
+genCode expr grad = unlines $ result
+  where
+    comp = do { objVar <- makeGraph' expr
+              ; gradVars <- forM (Map.assocs grad) $ \(i, g) -> makeGraph' g >>= \x -> return (i, x)
+              ; return (objVar, gradVars)
+              }
+    ((objVar, gradVars), st) = runGen comp
+    sorted = topSort $ gs_graph st
+    varMap = mapVars expr 
+    decls = genDecls sorted (gs_graph st) varMap
+    result =
+        ["double obj_func(int n, const double *x, double *g) {"]
+        ++ (map ("    "++) decls) ++
+        [""]
+        ++ (map (\(i, x) -> "    g[" ++ (show $ varMap Map.! i) ++ "] = " ++ varName x ++ ";") gradVars) ++
+        [""
+        ,"    return " ++ varName (objVar) ++ ";"
+        ,"}"]

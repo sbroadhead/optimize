@@ -32,7 +32,7 @@ data BoundVar = BoundVar String Integer
 diff :: Integer -> Expr -> Expr
 diff x (Const _) = Const 0.0
 diff x (Add a b) = Add (diff x a) (diff x b)
-diff x (Sub a b) = Sub (diff x a) (diff x  b)
+diff x (Sub a b) = Sub (diff x a) (diff x b)
 diff x (Mul a b) = Add (Mul (diff x a) b) (Mul a (diff x b))
 diff x (Div a b) = Div (Sub (Mul (diff x a) b) (Mul a (diff x b))) (Mul b b)
 diff x (Sin a) = Mul (diff x a) (Cos a)

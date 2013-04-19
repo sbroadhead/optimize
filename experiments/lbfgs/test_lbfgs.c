@@ -2,48 +2,12 @@
 #include <lbfgs.h>
 #include <math.h>
 
-typedef struct { double x; double y; } pt;
-
-/* Simple test problem. Compute the best least-squares quadratic polynomial to fit the following points: */
-static pt points[] = {
-    { 1, 1.1 }, { 2, 3.7 }, { 3, 9.04 }, { 4, 15.5 }, { 5, 22.8 }, { 6, 35.1 }
-};
+#include "objfun.c"
 
 static lbfgsfloatval_t evaluate(void *instance, const lbfgsfloatval_t *x, lbfgsfloatval_t *g,
         int n, lbfgsfloatval_t step)
 {
-    int i;
-    double sum = 0;
-    double term;
-    double z;
-
-    g[0] = 0;
-    g[1] = 0;
-    g[2] = 0;
-
-    /* Objective: 
-     *    minimize      sum{ (f(x_i) - y_i)^2 }
-     *      where       f(x_i) = ax^2 + bx + c
-     *
-     * Gradient:
-     *    grad((f(x_i) - y_i)^2) = 2*(f(x_i) - y_i)*grad(f(x_i))
-     *    df/da = x^2
-     *    df/db = x
-     *    df/dc = 1
-     */
-
-    for (i = 0; i < sizeof(points)/sizeof(points[0]); i++) {
-        z = points[i].x;
-        term = (x[0] * z * z + x[1] * z + x[2]) - points[i].y;
-        sum += term * term;
-
-        /* Gradient */
-        g[0] += 2 * term * z * z;
-        g[1] += 2 * term * z;
-        g[2] += 2 * term;
-    }
-
-    return sum;
+    return obj_func(n, x, g);
 }
 
 static int progress(void *instance, const lbfgsfloatval_t *x, const lbfgsfloatval_t *g, const lbfgsfloatval_t fx,
@@ -70,12 +34,12 @@ int main(int argc, char *argv[])
     }
 
     for (i = 0; i < 3; i++) {
-        x[i] = 0;
+        x[i] = 1;
     }
 
     /* Initialize the parameters for the L-BFGS optimization. */
     lbfgs_parameter_init(&param);
-    param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE;
+    //param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE;
 
     ret = lbfgs(3, x, &fx, evaluate, progress, NULL, &param);
 
