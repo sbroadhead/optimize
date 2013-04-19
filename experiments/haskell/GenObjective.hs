@@ -65,9 +65,10 @@ instance Assignable Expr where
             Just _ -> error $ "Variable already defined: " ++ show i
             Nothing -> modify $ \s -> s { os_vars = Map.insert i e vars }
     x $= _ = error $ "Trying to assign to a non-variable: " ++ show x
-    e1 $<= e2 = do
-        constraints <- gets os_constraints
-        modify $ \s -> s { os_constraints = constraints ++ [(e1, e2)] }
+    e1 $<= e2 = do    
+        modify $ \s -> s { os_objective = Add (os_objective s) (logBarrier e1 e2) }
+        --constraints <- gets os_constraints
+        --modify $ \s -> s { os_constraints = constraints ++ [(e1, e2)] }
 
 instance Assignable Quantifier where
     (Quantifier (VarDef x) s range) $= _ = error "Quantifying over non-array on left hand side of equality constraint"
@@ -129,7 +130,9 @@ sum' (BoundVar s _) range e = foldl1 Add $ map (\i -> evalQuantifier s i e) rang
 
 minimize :: Expr -> Opt ()
 minimize e = do
-    modify $ \s -> s { os_objective = e }
+    modify $ \s -> s { os_objective = Add (os_objective s) e }
+
+logBarrier e1 e2 = Negate $ Log (Sub e2 e1)
 
 execOpt :: Opt a -> OptState
 execOpt (Opt st) = execState st $ MkOptState 0 (con 0) Map.empty []

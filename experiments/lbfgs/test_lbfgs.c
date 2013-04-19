@@ -30,7 +30,7 @@ static int progress(void *instance, const lbfgsfloatval_t *x, const lbfgsfloatva
 int main(int argc, char *argv[])
 {
     int i, ret = 0;
-    int n = 6;
+    int n = 2;
     lbfgsfloatval_t fx;
     lbfgsfloatval_t *x = lbfgs_malloc(n);
     lbfgs_parameter_t param;
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     }
 
     for (i = 0; i < n; i++) {
-        x[i] = 4;
+        x[i] = 10;
     }
 
     /* Initialize the parameters for the L-BFGS optimization. */

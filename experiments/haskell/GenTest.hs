@@ -17,19 +17,13 @@ fromInteger :: Integer -> Integer
 fromInteger = id
 
 opt1 = do
-    l <- array 5
-    x <- array 5
-    y <- array 5
-    z <- var
+    x <- var
+    y <- var
 
-    x~~0 $= con 2.5
-    y~~0 $= con 5.2
-    x~~(i `for` [1..4]) $= (x~~(i @- 1)) .+. (l~~i)
-    y~~(i `for` [1..4]) $= (y~~(i @- 1)) .*. (l~~i)
+    con 5.0 $<= x
+    con 8.0 $<= y
 
-    (x~~i)%%(i `for` [1..4]) $<= (x~~(i @- 1))
-
-    minimize $ sum' i [0..4] $ ((x~~i) .-. (y~~i)) .*. ((x~~i) .-. (y~~i))
+    minimize $ x .+. y
 
 opt2 = do
     a <- var
@@ -66,7 +60,7 @@ opt4 = do
     let t2 = ((x~~(i@+1)) .-. (x~~i).*.(x~~i))
     minimize $ sum' i [0..4] $ t1 .*. t1 .+. con 100.0 .*. t2 .*. t2
 
-opt' = execOpt opt4
+opt' = execOpt opt1
 objective = simplify $ substitute (os_vars opt') $ os_objective opt'
 vars = varsOf objective
 gradient = Map.map simplify $ grad (Set.toList vars) objective

@@ -52,6 +52,8 @@ trySimplify (Div e (Const 1.0)) = (True, exprSort e)
 -- Multiplicative zero
 trySimplify (Mul (Const 0.0) e) = (True, Const 0.0)
 trySimplify (Mul e (Const 0.0)) = (True, Const 0.0)
+-- Double negative
+trySimplify (Negate (Negate a)) = (True, a)
 -- Reassociate multiplication to the left
 trySimplify (Mul a (Mul b c)) = (True, Mul (Mul a b) c)
 -- Recursive simplification
@@ -95,6 +97,9 @@ trySimplify (Cos a) =
 trySimplify (Log a) =
     let (x, a') = trySimplify $ exprSort a
     in (x, Log a')
+trySimplify (Negate a) =
+    let (x, a') = trySimplify $ exprSort a
+    in (x, Negate a')
 
 -- No simplification
 trySimplify e = (False, e)

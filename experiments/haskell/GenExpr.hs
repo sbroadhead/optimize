@@ -38,6 +38,7 @@ diff x (Div a b) = Div (Sub (Mul (diff x a) b) (Mul a (diff x b))) (Mul b b)
 diff x (Sin a) = Mul (diff x a) (Cos a)
 diff x (Cos a) = Negate $ Mul (diff x a) (Sin a)
 diff x (Log a) = Mul (diff x a) (Div (Const 1.0) a)
+diff x (Negate a) = Negate $ diff x a
 diff x (Var x')
     | x == x' = Const 1.0
     | otherwise = Const 0.0
@@ -80,15 +81,17 @@ infixl 6 .+., .-.
 infixl 7 .*., ./.
 
 pprints :: Int -> Expr -> ShowS
-pprints p (Const d) = shows d
-pprints p (Add e1 e2) = showParen (p>6) $ pprints 6 e1 . showString "+" . pprints 6 e2
-pprints p (Sub e1 e2) = showParen (p>6) $ pprints 6 e1 . showString "-" . pprints 6 e2
-pprints p (Mul e1 e2) = showParen (p>7) $ pprints 7 e1 . showString "*" . pprints 7 e2
-pprints p (Div e1 e2) = showParen (p>7) $ pprints 7 e1 . showString "/" . pprints 7 e2
+pprints p (Const d)
+    | d < 0 = pprints p (Negate $ Const (-d))
+    | otherwise = shows d
+pprints p (Add e1 e2) = showParen (p>6) $ pprints 6 e1 . showString "+" . pprints 7 e2
+pprints p (Sub e1 e2) = showParen (p>6) $ pprints 6 e1 . showString "-" . pprints 7 e2
+pprints p (Mul e1 e2) = showParen (p>7) $ pprints 7 e1 . showString "*" . pprints 8 e2
+pprints p (Div e1 e2) = showParen (p>7) $ pprints 7 e1 . showString "/" . pprints 8 e2
 pprints p (Sin e) = showString "sin" . showParen True (pprints 0 e)
 pprints p (Cos e) = showString "cos" . showParen True (pprints 0 e)
 pprints p (Log e) = showString "log" . showParen True (pprints 0 e)
-pprints p (Negate e) = showString "-" . (showParen (p>8) $ pprints 8 e)
+pprints p (Negate e) = showParen (p>=6) $ showString "-" . pprints 8 e
 pprints p (Var i) = showString "x[" . shows i . showString "]"
 pprints p (QuantifiedVar v (BoundVar s i))
     | i < 0 = showString ("x[" ++ s ++ "-") . shows (-i) . showString "]"

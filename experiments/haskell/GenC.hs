@@ -110,7 +110,10 @@ toC (VarT i) vars = "x[" ++ (show $ vars Map.! i) ++ "]"
 
 genDecls :: [Int] -> IntMap ExprGraph -> Map Integer Integer -> [String]
 genDecls [] _ _ = []
-genDecls (x:xs) exprs vars = ["double " ++ varName x ++ " = " ++ toC (exprs IntMap.! x) vars ++ ";"] ++ genDecls xs exprs vars
+genDecls (x:xs) exprs vars =
+    ["double " ++ varName x ++ " = " ++ toC (exprs IntMap.! x) vars ++ ";"]
+--    ++ ["printf(\"" ++ varName x ++ " = %f\\n\", " ++ varName x ++ ");"]
+    ++ genDecls xs exprs vars
 
 mapVars :: Expr -> Map Integer Integer
 mapVars expr = Map.fromList $ zip (Set.toList $ varsOf expr) [0..]
