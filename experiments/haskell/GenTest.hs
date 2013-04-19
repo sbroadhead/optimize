@@ -47,9 +47,9 @@ opt2 = do
     minimize $ sum' i [0..9] $ (t .-. (y~~i)) .*. (t .-. (y~~i))
 
     -- Solution according to Wolfram Alpha:
-    --      a = -0.161818  b = 0.123182   c = 1.00833
+    --      a = -0.248270 b = 0.163021, c = 1.00468
     -- Solution according to generated code in L-BFGS solver:
-    --      a = -0.161818  b = 0.123182  c = 1.008333
+    --     a = -0.248270  b = 0.163021, c = 1.004681
 
 opt3 = do
     a <- var
