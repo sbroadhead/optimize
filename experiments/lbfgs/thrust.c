@@ -2,8 +2,9 @@
 #include <lbfgs.h>
 #include <math.h>
 
-#define N 30
-#define DT 1
+#define N 20
+#define TOTAL_TIME 20
+#define DT ((double)TOTAL_TIME/(double)N)
 
 #define L 0
 #define R (N)
@@ -20,7 +21,7 @@ typedef struct {
 } vals_t;
 
 vals_t vals;
-double mu = 1e-5;
+double mu = 1e-10;
 
 static double grad(double (*func)(const double *), const double *x, int var)
 {
@@ -58,6 +59,7 @@ static double sqdist(double x, double y) { return (x-y)*(x-y); }
 static double dist(double x, double y) { return fabs(x-y); }
 static double sqdist2(double x1, double y1, double x2, double y2) { return sqdist(x1, x2)+sqdist(y1, y2); }
 static double dist2(double x1, double y1, double x2, double y2) { return sqrt(sqdist2(x1, y1, x2, y2)); }
+static double dot(double x1, double y1, double x2, double y2) { return (x1*x2)+(y1*y2); }
 
 static double f(const double *x)
 {
@@ -119,6 +121,8 @@ static double f(const double *x)
     
             pdist = sqdist2(px[prev], py[prev], vals.pxn, vals.pyn);
             CONSTRAINT(sqdist2(px[cur], py[cur], vals.pxn, vals.pyn), pdist + 1e-4);
+
+            CONSTRAINT(dot(px[cur] - vals.pxn, py[cur] - vals.pyn, vals.pxn - vals.px0, vals.pyn - vals.py0), 0.0);
             
             prev = cur;
             cur = 1 - cur;
@@ -134,8 +138,8 @@ static double f(const double *x)
 
     angle = atan2(dy[prev], dx[prev]);
 
-    CONSTRAINT(vx[prev], 1e-4);
-    CONSTRAINT(vy[prev], 1e-4);
+    CONSTRAINT(vx[prev], 1e-7);
+    CONSTRAINT(vy[prev], 1e-7);
     CONSTRAINT(angle*angle, 1e-4);
     
     CONSTRAINT(dist(x[L], vals.ls), DT);
@@ -182,10 +186,10 @@ int main(int argc, char *argv[])
     lbfgsfloatval_t *x = lbfgs_malloc(n);
     lbfgs_parameter_t param;
 
-    vals.mass = 100;
-    vals.radius = 4;
-    vals.pxn = 15;
-    vals.pyn = 0;
+    vals.mass = 20;
+    vals.radius = 1;
+    vals.pxn = 6;
+    vals.pyn = 6;
     vals.px0 = 0;
     vals.py0 = 0;
     vals.vx0 = 0;
@@ -208,8 +212,8 @@ int main(int argc, char *argv[])
     /* Initialize the parameters for the L-BFGS optimization. */
     lbfgs_parameter_init(&param);
     param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_WOLFE;
-    param.past = 1;
-    param.delta = 1e-8;
+    param.past = 10;
+    param.delta = 1e-6;
     //param.max_linesearch = 200;
     //param.gtol = 1e-3;
 

@@ -1,14 +1,14 @@
 function thrustregion(l, r, dt)
 
-M = 100;        % Mass in kg
-R = 4;          % Radius in m
+M = 20;        % Mass in kg
+R = 1;          % Radius in m
 
 p = [0 0];    % Position
 v = [0 0];      % Velocity
 d = [1 0];      % Direction
 omega = 0;      % Angular velocity
 
-iter = 20;      % ODE solver iterations
+iter = 10;      % ODE solver iterations
 h = dt/iter;    % Iteration step size
 
 % Inputs:
@@ -40,7 +40,10 @@ colordef(fig, 'black');
 ax = axes( ...
     'Units', 'normalized', ...
     'Drawmode', 'fast');
-axis([-100 100 -100 100]);
+axis([-20 20 -20 20]);
+
+xs = [];
+ys = [];
 
 count = length(l);
 for i=2:count+1
@@ -55,6 +58,9 @@ for i=2:count+1
         v = [soln(3) soln(4)];
         d = [soln(5) soln(6)];
         omega = soln(7);
+        
+        xs = [xs p(1)];
+        ys = [ys p(2)];
 
         % Plot the graphic
         cla;
@@ -64,9 +70,12 @@ for i=2:count+1
             'EdgeColor', 'white');
         line([p(1) p(1)+d(1)*R], [p(2) p(2)+d(2)*R], ...
             'Color', 'white');
-        
         status = [sprintf('p:(%f %f)\n', p(1), p(2)) sprintf('v:(%f %f)\n', v(1), v(2)) sprintf('lr:(%f %f)\n', l(i-1), r(i-1))];
-        text(-95, 85, status);
+        text(-15, 5, status); 
+        
+        hold on
+        plot(xs, ys);
+       
         drawnow;
     end
 end
