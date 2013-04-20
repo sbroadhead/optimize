@@ -18,12 +18,12 @@ simplify expr = simplify' expr 0
 exprSort (Add (Const a) (Const b)) = if a < b then Add (Const a) (Const b) else Add (Const b) (Const a)
 exprSort (Add (Const a) b) = Add (Const a) (exprSort b)
 exprSort (Add a (Const b)) = Add (Const b) (exprSort a)
-exprSort (Add (Var a) (Var b)) = if a < b then Add (Var a) (Var b) else Add (Var a) (Var b)
+exprSort (Add (Var n1 a) (Var n2 b)) = if a < b then Add (Var n1 a) (Var n2 b) else Add (Var n2 b) (Var n1 a)
 
 exprSort (Mul (Const a) (Const b)) = if a < b then Mul (Const a) (Const b) else Mul (Const b) (Const a)
 exprSort (Mul (Const a) b) = Mul (Const a) (exprSort b)
 exprSort (Mul a (Const b)) = Mul (Const b) (exprSort a)
-exprSort (Mul (Var a) (Var b)) = if a < b then Mul (Var a) (Var b) else Mul (Var a) (Var b)
+exprSort (Mul (Var n1 a) (Var n2 b)) = if a < b then Mul (Var n1 a) (Var n2 b) else Mul (Var n2 b) (Var n1 b)
 exprSort x = x
 
 -- Collecting like terms in addition

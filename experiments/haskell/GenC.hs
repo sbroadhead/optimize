@@ -8,6 +8,7 @@ import qualified Data.IntMap as IntMap
 import Data.IntMap (IntMap)
 import qualified Data.Set as Set
 import Data.Set (Set)
+import Data.List
 import Control.Monad.State
 import GenObjective
 import GenExpr
@@ -24,6 +25,7 @@ data ExprGraph
     | LogT Int
     | NegateT Int
     | VarT Integer
+    | ParamT String
     deriving (Show, Eq, Ord)
 
 data GenState
@@ -63,7 +65,8 @@ makeGraph' q@(Sin a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z 
 makeGraph' q@(Cos a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (CosT x); return z }
 makeGraph' q@(Log a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (LogT x); return z }
 makeGraph' q@(Negate a) = do { x <- makeGraph' a; z <- addOrGet q; makeGraphNode z (NegateT x); return z }
-makeGraph' q@(Var i) = do { z <- addOrGet q; makeGraphNode z (VarT i); return z }
+makeGraph' q@(Var name i) = do { z <- addOrGet q; makeGraphNode z (VarT i); return z }
+makeGraph' q@(Param s) = do { z <- addOrGet q; makeGraphNode z (ParamT s); return z }
 
 makeGraph :: Expr -> (Int, IntMap ExprGraph)
 makeGraph expr =
@@ -107,6 +110,7 @@ toC (CosT a) _ = "cos(" ++ varName a ++ ")"
 toC (LogT a) _ = "log(" ++ varName a ++ ")"
 toC (NegateT a) _ = "-" ++ varName a
 toC (VarT i) vars = "x[" ++ (show $ vars Map.! i) ++ "]"
+toC (ParamT s) _ = s;
 
 genDecls :: [Int] -> IntMap ExprGraph -> Map Integer Integer -> [String]
 genDecls [] _ _ = []
@@ -114,6 +118,11 @@ genDecls (x:xs) exprs vars =
     ["double " ++ varName x ++ " = " ++ toC (exprs IntMap.! x) vars ++ ";"]
 --    ++ ["printf(\"" ++ varName x ++ " = %f\\n\", " ++ varName x ++ ");"]
     ++ genDecls xs exprs vars
+
+genVarIndex :: Map Integer String -> [String]
+genVarIndex names =
+    ["/* VARIABLES */"]
+    ++ (map (\(i,v) -> "/* x[" ++ show i ++ "] : " ++ v ++ " */") $ Map.assocs names)
 
 mapVars :: Expr -> Map Integer Integer
 mapVars expr = Map.fromList $ zip (Set.toList $ varsOf expr) [0..]
@@ -129,8 +138,11 @@ genCode expr grad = unlines $ result
     sorted = topSort $ gs_graph st
     varMap = mapVars expr 
     decls = genDecls sorted (gs_graph st) varMap
+    paramList = concatMap (", double "++) $ Set.toList (paramNames expr)
     result =
-        ["double obj_func(int n, const double *x, double *g) {"]
+        ["double obj_func(const double *x, double *g" ++ paramList ++ ") {"]
+        ++ (map ("    "++) (genVarIndex $ varNames expr)) ++
+        [""]
         ++ (map ("    "++) decls) ++
         [""]
         ++ (map (\(i, x) -> "    g[" ++ (show $ varMap Map.! i) ++ "] = " ++ varName x ++ ";") gradVars) ++

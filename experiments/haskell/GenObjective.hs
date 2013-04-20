@@ -35,6 +35,8 @@ data QuantifierRange = QuantifierRange String [Integer]
 data QuantifiedExpr = QuantifiedExpr Expr String [Integer]
     deriving (Show, Eq, Ord)
 
+arrayName name i = name ++ "[" ++ show i ++ "]"
+
 evalQuantifier :: String -> Integer -> Expr -> Expr
 evalQuantifier s i (Add x y) = Add (evalQuantifier s i x) (evalQuantifier s i y)
 evalQuantifier s i (Sub x y) = Sub (evalQuantifier s i x) (evalQuantifier s i y)
@@ -44,11 +46,11 @@ evalQuantifier s i (Sin x) = Sin (evalQuantifier s i x)
 evalQuantifier s i (Cos x) = Cos (evalQuantifier s i x)
 evalQuantifier s i (Log x) = Log (evalQuantifier s i x)
 evalQuantifier s i (Negate x) = Negate (evalQuantifier s i x)
-evalQuantifier s i (QuantifiedVar v@(VarDef x) (BoundVar s' off))
-    | s == s' = Var (x+i+off)
+evalQuantifier s i (QuantifiedVar v@(VarDef name x) (BoundVar s' off))
+    | s == s' = Var name (x+i+off)
     | otherwise = QuantifiedVar v (BoundVar s' off)
-evalQuantifier s i (QuantifiedVar v@(ArrayDef n x) (BoundVar s' off))
-    | s == s' = Var (n+i+off)
+evalQuantifier s i (QuantifiedVar v@(ArrayDef name n x) (BoundVar s' off))
+    | s == s' = Var (arrayName name $ i+off) (n+i+off)
     | otherwise = QuantifiedVar v (BoundVar s' off)
 evalQuantifier _ _ x = x
 
@@ -59,7 +61,7 @@ class Assignable a where
 infixr 1 $=, $<=
 
 instance Assignable Expr where
-    (Var i) $= e = do
+    (Var _ i) $= e = do
         vars <- gets os_vars
         case Map.lookup i vars of
             Just _ -> error $ "Variable already defined: " ++ show i
@@ -71,10 +73,10 @@ instance Assignable Expr where
         --modify $ \s -> s { os_constraints = constraints ++ [(e1, e2)] }
 
 instance Assignable Quantifier where
-    (Quantifier (VarDef x) s range) $= _ = error "Quantifying over non-array on left hand side of equality constraint"
-    (Quantifier (ArrayDef n x) s range) $= e = forM_ range $ \i -> (Var (n+i)) $= (evalQuantifier s i e)
-    (Quantifier (VarDef x) s range) $<= _ = error "Quantifying over non-array on left hand side of inequality constraint"
-    (Quantifier (ArrayDef n x) s range) $<= e = forM_ range $ \i -> (Var (n+i)) $<= (evalQuantifier s i e)
+    (Quantifier (VarDef name x) s range) $= _ = error "Quantifying over non-array on left hand side of equality constraint"
+    (Quantifier (ArrayDef name n x) s range) $= e = forM_ range $ \i -> (Var (arrayName name i) (n+i)) $= (evalQuantifier s i e)
+    (Quantifier (VarDef name x) s range) $<= _ = error "Quantifying over non-array on left hand side of inequality constraint"
+    (Quantifier (ArrayDef name n x) s range) $<= e = forM_ range $ \i -> (Var (arrayName name i) (n+i)) $<= (evalQuantifier s i e)
 
 instance Assignable QuantifiedExpr where
     (QuantifiedExpr e s range) $= _ = error "Quantified expression on left hand side of equality constraint"
@@ -86,22 +88,22 @@ class VarIndex a where
 
 instance VarIndex Integer where
     type VarDeref Integer = Expr
-    deref (ArrayDef x n) i
+    deref (ArrayDef name x n) i
         | i < 0 = error "Array index < 0"
         | i >= n = error $ "Array index >= " ++ show n
-        | otherwise = Var (x+i)
-    deref (VarDef x) i
-        | i == 0 = Var x
+        | otherwise = Var (arrayName name i) (x+i)
+    deref (VarDef name x) i
+        | i == 0 = Var name x
         | otherwise = error "Dereferencing a non-array"
 
 instance VarIndex QuantifierRange where
     type VarDeref QuantifierRange = Quantifier
-    deref (ArrayDef x n) (QuantifierRange s range) = Quantifier (ArrayDef x n) s range
+    deref (ArrayDef name x n) (QuantifierRange s range) = Quantifier (ArrayDef name x n) s range
     deref _ _ = error "Quantifying over a non-array"
 
 instance VarIndex BoundVar where
     type VarDeref BoundVar = Expr
-    deref (ArrayDef x n) b = QuantifiedVar (ArrayDef x n) b
+    deref (ArrayDef name x n) b = QuantifiedVar (ArrayDef name x n) b
     deref _ _ = error "Dereferencing a non-array with a bound variable"
 
 (~~) :: VarIndex a => VarDef -> a -> VarDeref a
@@ -112,17 +114,17 @@ e %% (QuantifierRange s range) = QuantifiedExpr e s range
 
 infixr 4 ~~, %%
 
-var :: Opt Expr
-var = do
+var :: String -> Opt Expr
+var name = do
     varcount <- gets os_varcount
     modify $ \s -> s { os_varcount = varcount + 1 }
-    return $ (VarDef varcount) ~~ (0::Integer)
+    return $ (VarDef name varcount) ~~ (0::Integer)
 
-array :: Integer -> Opt VarDef
-array n = do
+array :: String -> Integer -> Opt VarDef
+array name n = do
     varcount <- gets os_varcount
     modify $ \s -> s { os_varcount = varcount + n }
-    return $ ArrayDef varcount n
+    return $ ArrayDef name varcount n
 
 sum' :: BoundVar -> [Integer] -> Expr -> Expr
 sum' _ [] _ = con 0.0
@@ -132,7 +134,7 @@ minimize :: Expr -> Opt ()
 minimize e = do
     modify $ \s -> s { os_objective = Add (os_objective s) e }
 
-logBarrier e1 e2 = Negate $ Log (Sub e2 e1)
+logBarrier e1 e2 = Mul (Param "mu") $ Negate $ Log (Sub e2 e1)
 
 execOpt :: Opt a -> OptState
 execOpt (Opt st) = execState st $ MkOptState 0 (con 0) Map.empty []

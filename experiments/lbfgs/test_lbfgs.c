@@ -7,7 +7,7 @@
 static lbfgsfloatval_t evaluate(void *instance, const lbfgsfloatval_t *x, lbfgsfloatval_t *g,
         int n, lbfgsfloatval_t step)
 {
-    return obj_func(n, x, g);
+    return obj_func(x, g, 0.01);
 }
 
 static int progress(void *instance, const lbfgsfloatval_t *x, const lbfgsfloatval_t *g, const lbfgsfloatval_t fx,

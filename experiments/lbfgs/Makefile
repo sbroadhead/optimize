@@ -2,12 +2,12 @@ CC = gcc
 CFLAGS = -Wall -O2 -g
 LDFLAGS = -llbfgs
 
-OBJ = test_lbfgs.o
-
 all: test_lbfgs
 
-test_lbfgs: $(OBJ)
-	$(CC) $(LDFLAGS) -o test_lbfgs $(OBJ)
+test_lbfgs: test_lbfgs.o
+	$(CC) $(LDFLAGS) -o test_lbfgs test_lbfgs.o
 
-.c.o:
-	$(CC) $(CFLAGS) -c $<
+test_lbfgs.o: dummy
+	$(CC) $(CFLAGS) -c test_lbfgs.c
+
+dummy:

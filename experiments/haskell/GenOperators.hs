@@ -15,3 +15,4 @@ log = log'
 (.) :: VarIndex a => VarDef -> a -> VarDeref a
 (.) = deref
 sum = sum'
+param = param'

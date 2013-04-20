@@ -18,8 +18,8 @@ fromInteger :: Integer -> Integer
 fromInteger = id
 
 opt1 = do
-    x <- var
-    y <- var
+    x <- var "x"
+    y <- var "y"
 
     con 5.0 $<= x
     con 8.0 $<= y
@@ -27,11 +27,11 @@ opt1 = do
     minimize $ x + y
 
 opt2 = do
-    a <- var
-    b <- var
-    c <- var
-    x <- array 10
-    y <- array 10
+    a <- var "a"
+    b <- var "b"
+    c <- var "c"
+    x <- array "x" 10
+    y <- array "y" 10
 
     let xs = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
     let ys = [0.22, 1.1, 3.7, 9.2, 15.5, 27.1, 37.7, 49.2, 64.7, 83.1]
@@ -47,15 +47,15 @@ opt2 = do
     --     a = -0.248270  b = 0.163021, c = 1.004681
 
 opt3 = do
-    a <- var
-    b <- var
-    c <- var
+    a <- var "a"
+    b <- var "b"
+    c <- var "c"
 
     minimize $ a*a + b*b + con 6.0 * c * c + con 7.0
 
 -- Banana function
 opt4 = do
-    x <- array 6
+    x <- array "x" 6
 
     let t1 = (con 1.0 - (x.i))
     let t2 = ((x.(i@+1)) - (x.i)*(x.i))
