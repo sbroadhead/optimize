@@ -1,9 +1,15 @@
-function thrustregion(l, r, dt)
+% thrustregion
+%   l      Left thrust force at each time step
+%   r      Right thrust force at each time step
+%   rx     Feasible region polygon x coordinates
+%   ry     Feasible region polygon y coordinates
+%   dt     Length of the time step
+function thrustregion(l, r, rx, ry, dt)
 
-M = 20;        % Mass in kg
+M = 20;         % Mass in kg
 R = 1;          % Radius in m
 
-p = [0 0];    % Position
+p = [0 0];      % Position
 v = [0 0];      % Velocity
 d = [1 0];      % Direction
 omega = 0;      % Angular velocity
@@ -41,6 +47,7 @@ ax = axes( ...
     'Units', 'normalized', ...
     'Drawmode', 'fast');
 axis([-20 20 -20 20]);
+axis square
 
 xs = [];
 ys = [];
@@ -62,8 +69,11 @@ for i=2:count+1
         xs = [xs p(1)];
         ys = [ys p(2)];
 
+        hold on
+        
         % Plot the graphic
         cla;
+        fill(rx, ry, [0.3 0.3 0.3]);
         rectangle( ...,
             'Position', [p(1)-R, p(2)-R 2*R 2*R], ...
             'Curvature', [1 1], ...
@@ -71,9 +81,8 @@ for i=2:count+1
         line([p(1) p(1)+d(1)*R], [p(2) p(2)+d(2)*R], ...
             'Color', 'white');
         status = [sprintf('p:(%f %f)\n', p(1), p(2)) sprintf('v:(%f %f)\n', v(1), v(2)) sprintf('lr:(%f %f)\n', l(i-1), r(i-1))];
-        text(-15, 5, status); 
-        
-        hold on
+        text(-15, 5, status);
+     
         plot(xs, ys);
        
         drawnow;

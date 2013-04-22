@@ -20,8 +20,41 @@ typedef struct {
     double mass;
 } vals_t;
 
+typedef struct {
+    double x, y;
+} pt_t;
+
+const double start_x = 0.0, start_y = 0.0;
+const double end_x = 6.0, end_y = 6.0;
+const pt_t region[] = {
+    { -1.2, -1.2 }, { 7.2, -1.2 }, { 7.2, 7.2 }, { -1.2, 7.2 }
+};
+
 vals_t vals;
 double mu = 1e-10;
+
+static double line_dist(double x1, double y1, double x2, double y2, double px, double py)
+{
+    double nx = x2 - x1;
+    double ny = y2 - y1;
+    double norm = sqrt(ny*ny + nx*nx);
+    double apx, apy;
+    double dx, dy;
+    double dot;
+    double sign;
+
+    sign = ((x2 - x1)*(py - y1) - (y2 - y1)*(px - x1)) > 0.0 ? 1.0 : -1.0;
+
+    nx /= norm;
+    ny /= norm;
+    apx = x1 - px;
+    apy = y1 - py;
+    dot = (apx * nx) + (apy * ny);
+
+    dx = (x1 - px) - dot * nx;
+    dy = (y1 - py) - dot * ny;
+    return sign * sqrt(dx*dx + dy*dy);
+}
 
 static double grad(double (*func)(const double *), const double *x, int var)
 {
@@ -65,6 +98,7 @@ static double f(const double *x)
 {
     const int iters = 10;
     double h = DT / (double)iters;
+    int m = sizeof(region)/sizeof(region[0]);
 
     double px[2], py[2], vx[2], vy[2], dx[2], dy[2], w[2];
     double ax, ay;
@@ -76,7 +110,7 @@ static double f(const double *x)
     double pdist;
     double angle;
     int ccount = 0;
-    int i, j;
+    int i, j, k;
 
     int cur = 1;
     int prev = 0;
@@ -124,6 +158,13 @@ static double f(const double *x)
 
             CONSTRAINT(dot(px[cur] - vals.pxn, py[cur] - vals.pyn, vals.pxn - vals.px0, vals.pyn - vals.py0), 0.0);
             
+            /* Feasible region constraints */
+            for (k = 0; k < m; k++) {
+                double dist = line_dist(region[k].x, region[k].y, region[(k+1)%m].x, region[(k+1)%m].y,
+                    px[cur], py[cur]);
+                CONSTRAINT(vals.radius, dist);
+            }
+
             prev = cur;
             cur = 1 - cur;
         }
@@ -144,6 +185,7 @@ static double f(const double *x)
     
     CONSTRAINT(dist(x[L], vals.ls), DT);
     CONSTRAINT(dist(x[R], vals.rs), DT);
+    
 
 #undef CONSTRAINT
     y += cons;
@@ -165,16 +207,8 @@ static int progress(void *instance, const lbfgsfloatval_t *x, const lbfgsfloatva
         const lbfgsfloatval_t xnorm, const lbfgsfloatval_t gnorm, const lbfgsfloatval_t step,
         int n, int k, int ls)
 {
-    int i;
-
-    printf("Iteration %d:\n", k);
-    printf("  fx = %f;\n ", fx);
-    /*for (i = 0; i < N; i ++){
-        printf("l[%d] = %.10f; r[%d] = %.10f\n", i, x[L+i], i, x[R+i]);
-    }
-    printf("\n");
-    printf("  xnorm = %f, gnorm = %f, step = %f\n", xnorm, gnorm, step);*/
-    printf("\n");
+    printf("Iteration %06d (fx = %10.4f)    \r", k, fx);
+    fflush(stdout);
     return 0;
 }
 
@@ -182,16 +216,17 @@ int main(int argc, char *argv[])
 {
     int i, ret = 0;
     int n = 2*N;
+    int m;
     lbfgsfloatval_t fx;
     lbfgsfloatval_t *x = lbfgs_malloc(n);
     lbfgs_parameter_t param;
 
     vals.mass = 20;
     vals.radius = 1;
-    vals.pxn = 6;
-    vals.pyn = 6;
-    vals.px0 = 0;
-    vals.py0 = 0;
+    vals.pxn = end_x;
+    vals.pyn = end_y;
+    vals.px0 = start_x;
+    vals.py0 = start_y;
     vals.vx0 = 0;
     vals.vy0 = 0;
     vals.dx0 = 1;
@@ -219,19 +254,28 @@ int main(int argc, char *argv[])
 
     ret = lbfgs(n, x, &fx, evaluate, progress, NULL, &param);
 
-    printf("L-BFGS optimization terminated with status code = %d\n", ret);
+    printf("\nL-BFGS optimization terminated with status code = %d\n", ret);
     printf("  fx = %f;\n", fx);
     for (i = 0; i < N; i++){
-        printf("    l[%d] = %.10f; r[%d] = %.10f\n", i, x[L+i], i, x[R+i]);
+        printf("    l[%2d] = %20.10f; r[%2d] = %20.10f\n", i, x[L+i], i, x[R+i]);
     }
     printf("\n");
 
-    printf("MATLAB vectors:\n");
+    printf("MATLAB variables:\n");
     printf("l = [ ");
     for (i = 0; i < N; i++) { printf("%f ", x[L+i]); }
-    printf(" ]\nr = [ ");
+    printf(" ];\nr = [ ");
     for (i = 0; i < N; i++) { printf("%f ", x[R+i]); }
-    printf(" ]\n");
+    printf(" ];\n");
+
+    m = sizeof(region)/sizeof(region[0]);
+    printf("rx = [ ");
+    for (i = 0; i < m; i++) { printf("%f ", region[i].x); }
+    printf(" ];\nry = [ ");
+    for (i = 0; i < m; i++) { printf("%f ", region[i].y); }
+    printf(" ];\n");
+    
+    printf("dt = %f;\n", DT);
 
     /* Answer according to Wolfram Alpha:
      *  1.00607 x^2 - 0.363643 x + 0.554
