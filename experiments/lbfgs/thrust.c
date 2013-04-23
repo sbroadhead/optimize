@@ -109,6 +109,7 @@ static double f(const double *x)
     double cons = 0.0;
     double pdist;
     double angle;
+    double tdx, tdy;
     int ccount = 0;
     int i, j, k;
 
@@ -150,9 +151,6 @@ static double f(const double *x)
             px[cur] = px[prev] + vx[prev] * h + 0.5 * ax * h * h;
             py[cur] = py[prev] + vy[prev] * h + 0.5 * ay * h * h;
             
-            /* distance from destination */
-            y += h * ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
-    
             pdist = sqdist2(px[prev], py[prev], vals.pxn, vals.pyn);
             CONSTRAINT(sqdist2(px[cur], py[cur], vals.pxn, vals.pyn), pdist + 1e-4);
 
@@ -163,6 +161,13 @@ static double f(const double *x)
                 double dist = line_dist(region[k].x, region[k].y, region[(k+1)%m].x, region[(k+1)%m].y,
                     px[cur], py[cur]);
                 CONSTRAINT(vals.radius, dist);
+            }
+
+            if (i < N) {
+                /* distance from destination */
+                y += h * ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
+                /* dot product of initial angle with current angle */
+                y -= dot(dx[cur], dy[cur], vals.dx0, vals.dy0);
             }
 
             prev = cur;
@@ -177,11 +182,8 @@ static double f(const double *x)
         CONSTRAINT(dist(x[R+i], x[R+i-1]), DT);
     }
 
-    angle = atan2(dy[prev], dx[prev]);
-
     CONSTRAINT(vx[prev], 1e-7);
     CONSTRAINT(vy[prev], 1e-7);
-    CONSTRAINT(angle*angle, 1e-4);
     
     CONSTRAINT(dist(x[L], vals.ls), DT);
     CONSTRAINT(dist(x[R], vals.rs), DT);
