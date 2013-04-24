@@ -75,7 +75,7 @@ static double grad(double (*func)(const double *), const double *x, int var)
 
 static double lb(double x, double y) /* log barrier */
 {
-    return -mu * (y <= x) ? HUGE_VAL : log(y - x);
+    return mu * (y <= x) ? HUGE_VAL : -log(y - x);
 }
 
 static double qp(double x, double y) /* quadratic penalty */
@@ -165,9 +165,10 @@ static double f(const double *x)
 
             if (i < N) {
                 /* distance from destination */
-                y += h * ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
+                y += ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
+
                 /* dot product of initial angle with current angle */
-                y -= dot(dx[cur], dy[cur], vals.dx0, vals.dy0);
+                //y -= dot(dx[cur], dy[cur], vals.dx0, vals.dy0);
             }
 
             prev = cur;

@@ -116,7 +116,7 @@ ay = lasty(6) * (l + r)/M;
 y(3) = lasty(3) + ax * dt;
 y(4) = lasty(4) + ay * dt;
 y(1) = lasty(1) + lasty(3) * dt + 0.5 * ax * dt * dt;
-y(2) = lasty(2) + lasty(4) * dt + 0.5 * ax * dt * dt;
+y(2) = lasty(2) + lasty(4) * dt + 0.5 * ay * dt * dt;
 
 
 
