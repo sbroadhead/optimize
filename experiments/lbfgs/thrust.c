@@ -27,11 +27,11 @@ typedef struct {
 const double start_x = 0.0, start_y = 0.0;
 const double end_x = 6.0, end_y = 6.0;
 const pt_t region[] = {
-    { -1.2, -1.2 }, { 7.2, -1.2 }, { 7.2, 7.2 }, { -1.2, 7.2 }
+    { -1.2, -14.2 }, { 15.2, -1.2 }, { 18.2, 8.2 }, { -1.2, 7.2 }
 };
 
 vals_t vals;
-double mu = 1e-10;
+double mu = 1e-4;
 
 static double line_dist(double x1, double y1, double x2, double y2, double px, double py)
 {
@@ -56,7 +56,7 @@ static double line_dist(double x1, double y1, double x2, double y2, double px, d
     return sign * sqrt(dx*dx + dy*dy);
 }
 
-static double grad(double (*func)(const double *), const double *x, int var)
+static double diff(double (*func)(const double *), const double *x, int var)
 {
     const double h = 1e-6;
     const double hinv = 1.0/h;
@@ -107,9 +107,6 @@ static double f(const double *x)
     double dnorm;
     double y = 0;
     double cons = 0.0;
-    double pdist;
-    double angle;
-    double tdx, tdy;
     int ccount = 0;
     int i, j, k;
 
@@ -127,6 +124,7 @@ static double f(const double *x)
 #define CONSTRAINT(x, y) do{double c=ib(x,y)/(ccount+1);\
     double cc=(ccount?(cons/(1.0+1.0/ccount)):0);\
     cons=c+cc;ccount++;}while(0)
+//#define CONSTRAINT(x, y) do{cons+=ib(x, y);}while(0)
 
     for (i = 1; i <= N; i++) {
         for (j = 0; j < iters; j++) {
@@ -141,7 +139,7 @@ static double f(const double *x)
             dx[cur] /= dnorm;
             dy[cur] /= dnorm;
 
-            /* acceleration*/
+            /* acceleration */
             ax = dx[prev] * (x[L+i-1] + x[R+i-1])/vals.mass;
             ay = dy[prev] * (x[L+i-1] + x[R+i-1])/vals.mass;
             /* velocity */
@@ -151,10 +149,8 @@ static double f(const double *x)
             px[cur] = px[prev] + vx[prev] * h + 0.5 * ax * h * h;
             py[cur] = py[prev] + vy[prev] * h + 0.5 * ay * h * h;
             
-            pdist = sqdist2(px[prev], py[prev], vals.pxn, vals.pyn);
-            CONSTRAINT(sqdist2(px[cur], py[cur], vals.pxn, vals.pyn), pdist + 1e-4);
-
-            CONSTRAINT(dot(px[cur] - vals.pxn, py[cur] - vals.pyn, vals.pxn - vals.px0, vals.pyn - vals.py0), 0.0);
+            //pdist = sqdist2(px[prev], py[prev], vals.pxn, vals.pyn);
+            //CONSTRAINT(sqdist2(px[cur], py[cur], vals.pxn, vals.pyn), pdist + 1e-4);
             
             /* Feasible region constraints */
             for (k = 0; k < m; k++) {
@@ -163,32 +159,26 @@ static double f(const double *x)
                 CONSTRAINT(vals.radius, dist);
             }
 
-            if (i < N) {
-                /* distance from destination */
-                y += ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
+            /* distance from destination */
+            y += ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
 
-                /* dot product of initial angle with current angle */
-                //y -= dot(dx[cur], dy[cur], vals.dx0, vals.dy0);
-            }
+            /* penalize backwards movement */
+            y -= dot(px[cur]-px[prev], py[cur]-py[prev], dx[prev], dy[prev]);
 
             prev = cur;
             cur = 1 - cur;
         }
-        /*CONSTRAINT(0.1, sqrt(sqdist(px[i], 15)));
-        CONSTRAINT(0.1, sqrt(sqdist(py[i], 16)));*/
     }
-
+    
     for (i = 1; i < N; i++) {
         CONSTRAINT(dist(x[L+i], x[L+i-1]), DT);
         CONSTRAINT(dist(x[R+i], x[R+i-1]), DT);
     }
 
-    CONSTRAINT(vx[prev], 1e-7);
-    CONSTRAINT(vy[prev], 1e-7);
-    
+    CONSTRAINT(dot(vx[prev], vx[prev], vy[prev], vy[prev]), 1e-1);
+
     CONSTRAINT(dist(x[L], vals.ls), DT);
     CONSTRAINT(dist(x[R], vals.rs), DT);
-    
 
 #undef CONSTRAINT
     y += cons;
@@ -201,7 +191,7 @@ static lbfgsfloatval_t evaluate(void *instance, const lbfgsfloatval_t *x, lbfgsf
 {
     int i;
     for (i = 0; i < n; i++) {
-        g[i] = grad(f, x, i);
+        g[i] = diff(f, x, i);
     }
     return f(x);
 }
@@ -249,9 +239,10 @@ int main(int argc, char *argv[])
 
     /* Initialize the parameters for the L-BFGS optimization. */
     lbfgs_parameter_init(&param);
-    param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_WOLFE;
+    param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE;
     param.past = 10;
     param.delta = 1e-6;
+    param.m = 15;
     //param.max_linesearch = 200;
     //param.gtol = 1e-3;
 
