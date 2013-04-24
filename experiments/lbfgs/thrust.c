@@ -26,6 +26,13 @@ typedef struct {
 
 const double start_x = 0.0, start_y = 0.0;
 const double end_x = 6.0, end_y = 6.0;
+const double start_vx = 0.0, start_vy = 0.0;
+const double start_dx = 0.0, start_dy = 1.0;
+const double start_w = 0.0;
+const double start_l = 0.0, start_r = 0.0;
+const double radius = 1.0;
+const double mass = 20.0;
+
 const pt_t region[] = {
     { -1.2, -14.2 }, { 15.2, -1.2 }, { 18.2, 8.2 }, { -1.2, 7.2 }
 };
@@ -128,6 +135,10 @@ static double f(const double *x)
 
     for (i = 1; i <= N; i++) {
         for (j = 0; j < iters; j++) {
+            dnorm = sqrt(dx[prev]*dx[prev] + dy[prev]*dy[prev]);
+            dx[prev] /= dnorm;
+            dy[prev] /= dnorm;
+
             /* angular velocity */
             dw = 2*(x[L+i-1] - x[R+i-1])/(vals.radius*vals.mass);
             w[cur] = w[prev] + dw * h;
@@ -135,9 +146,6 @@ static double f(const double *x)
             theta = 0.5 * h * (w[cur] + w[prev]);
             dx[cur] = dx[prev] * cos(theta) - dy[prev] * sin(theta);
             dy[cur] = dx[prev] * sin(theta) + dy[prev] * cos(theta);
-            dnorm = sqrt(dx[cur]*dx[cur] + dy[cur]*dy[cur]);
-            dx[cur] /= dnorm;
-            dy[cur] /= dnorm;
 
             /* acceleration */
             ax = dx[prev] * (x[L+i-1] + x[R+i-1])/vals.mass;
@@ -157,13 +165,15 @@ static double f(const double *x)
                 double dist = line_dist(region[k].x, region[k].y, region[(k+1)%m].x, region[(k+1)%m].y,
                     px[cur], py[cur]);
                 CONSTRAINT(vals.radius, dist);
+                // PROBLEM: sometimes the zero vector is not a valid initial guess
+                // if there is initial velocity
             }
 
             /* distance from destination */
             y += ((px[cur] - vals.pxn) * (px[cur] - vals.pxn) + (py[cur] - vals.pyn) * (py[cur] - vals.pyn));
 
             /* penalize backwards movement */
-            y -= dot(px[cur]-px[prev], py[cur]-py[prev], dx[prev], dy[prev]);
+            //y -= dot(px[cur]-px[prev], py[cur]-py[prev], dx[prev], dy[prev]);
 
             prev = cur;
             cur = 1 - cur;
@@ -214,19 +224,19 @@ int main(int argc, char *argv[])
     lbfgsfloatval_t *x = lbfgs_malloc(n);
     lbfgs_parameter_t param;
 
-    vals.mass = 20;
-    vals.radius = 1;
+    vals.mass = mass;
+    vals.radius = radius;
     vals.pxn = end_x;
     vals.pyn = end_y;
     vals.px0 = start_x;
     vals.py0 = start_y;
-    vals.vx0 = 0;
-    vals.vy0 = 0;
-    vals.dx0 = 1;
-    vals.dy0 = 0;
-    vals.w0 = 0;
-    vals.ls = 0;
-    vals.rs = 0;
+    vals.vx0 = start_vx;
+    vals.vy0 = start_vy;
+    vals.dx0 = start_dx;
+    vals.dy0 = start_dy;
+    vals.w0 = start_w;
+    vals.ls = start_l;
+    vals.rs = start_r;
 
     if (!x) {
         printf("ERROR: Failed to allocate a memory block for variables.\n");
@@ -268,7 +278,9 @@ int main(int argc, char *argv[])
     printf(" ];\nry = [ ");
     for (i = 0; i < m; i++) { printf("%f ", region[i].y); }
     printf(" ];\n");
-    
+    printf("parm = [ %f %f %f %f %f %f %f %f %f ];\n",
+        vals.px0, vals.py0, vals.vx0, vals.vy0, vals.dx0, vals.dy0,
+        vals.w0, vals.mass, vals.radius);
     printf("dt = %f;\n", DT);
 
     /* Answer according to Wolfram Alpha:
