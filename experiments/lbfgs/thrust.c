@@ -26,9 +26,9 @@ typedef struct {
 
 const double start_x = 0.0, start_y = 0.0;
 const double end_x = 6.0, end_y = 6.0;
-const double start_vx = 0.0, start_vy = 0.0;
+const double start_vx = 1.5, start_vy = 0.0;
 const double start_dx = 0.0, start_dy = 1.0;
-const double start_w = 0.0;
+const double start_w = 0.5;
 const double start_l = 0.0, start_r = 0.0;
 const double radius = 1.0;
 const double mass = 20.0;
@@ -38,7 +38,8 @@ const pt_t region[] = {
 };
 
 vals_t vals;
-double mu = 1e-4;
+double barrier_param = 0.6;
+double penalty_param = 10e5;
 
 static double line_dist(double x1, double y1, double x2, double y2, double px, double py)
 {
@@ -82,17 +83,17 @@ static double diff(double (*func)(const double *), const double *x, int var)
 
 static double lb(double x, double y) /* log barrier */
 {
-    return mu * (y <= x) ? HUGE_VAL : -log(y - x);
+    return barrier_param * ((y <= x) ? HUGE_VAL : -log(y - x));
 }
 
 static double qp(double x, double y) /* quadratic penalty */
 {
-    return mu * (y <= x) ? (y-x)*(y-x) : 0;
+    return penalty_param * ((y <= x) ? (y-x)*(y-x) : 0);
 }
 
 static double ib(double x, double y) /* inverse barrier */
 {
-    return mu * (y <= x) ? HUGE_VAL : 1/(y - x);
+    return barrier_param * ((y <= x) ? HUGE_VAL : 1/(y - x));
 }
 
 static double sqdist(double x, double y) { return (x-y)*(x-y); }
@@ -114,7 +115,9 @@ static double f(const double *x)
     double dnorm;
     double y = 0;
     double cons = 0.0;
+    double penalty = 0.0;
     int ccount = 0;
+    int pcount = 0;
     int i, j, k;
 
     int cur = 1;
@@ -131,6 +134,9 @@ static double f(const double *x)
 #define CONSTRAINT(x, y) do{double c=ib(x,y)/(ccount+1);\
     double cc=(ccount?(cons/(1.0+1.0/ccount)):0);\
     cons=c+cc;ccount++;}while(0)
+#define PENALTY(x, y) do{double p=qp(x,y)/(pcount+1);\
+    double pc=(pcount?(penalty/(1.0+1.0/pcount)):0);\
+    penalty=p+pc;pcount++;}while(0)
 //#define CONSTRAINT(x, y) do{cons+=ib(x, y);}while(0)
 
     for (i = 1; i <= N; i++) {
@@ -164,7 +170,7 @@ static double f(const double *x)
             for (k = 0; k < m; k++) {
                 double dist = line_dist(region[k].x, region[k].y, region[(k+1)%m].x, region[(k+1)%m].y,
                     px[cur], py[cur]);
-                CONSTRAINT(vals.radius, dist);
+                PENALTY(vals.radius, dist);
                 // PROBLEM: sometimes the zero vector is not a valid initial guess
                 // if there is initial velocity
             }
@@ -185,13 +191,13 @@ static double f(const double *x)
         CONSTRAINT(dist(x[R+i], x[R+i-1]), DT);
     }
 
-    CONSTRAINT(dot(vx[prev], vx[prev], vy[prev], vy[prev]), 1e-1);
+    PENALTY(dot(vx[prev], vy[prev], vx[prev], vy[prev]), 1e-1);
 
     CONSTRAINT(dist(x[L], vals.ls), DT);
     CONSTRAINT(dist(x[R], vals.rs), DT);
 
 #undef CONSTRAINT
-    y += cons;
+    y += cons + penalty;
 
     return y;
 }
