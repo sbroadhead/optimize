@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O2 -g
+CFLAGS = -Wall -O2 -g -I/usr/local/include
 LDFLAGS = -llbfgs
 
 all: test_lbfgs
