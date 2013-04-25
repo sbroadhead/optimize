@@ -5,13 +5,13 @@ LDFLAGS = -L/usr/local/lib -llbfgs
 all: test_lbfgs
 
 test_lbfgs: test_lbfgs.o
-	$(CC) $(LDFLAGS) -o test_lbfgs test_lbfgs.o
+	$(CC) test_lbfgs.o $(LDFLAGS) -o test_lbfgs 
 
 test_lbfgs.o: dummy
 	$(CC) $(CFLAGS) -c test_lbfgs.c
 
 thrust: thrust.o
-	$(CC) $(LDFLAGS) -o thrust thrust.o
+	$(CC) thrust.o $(LDFLAGS) -o thrust 
 
 thrust.o: dummy
 	$(CC) $(CFLAGS) -c thrust.c
