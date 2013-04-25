@@ -4,15 +4,22 @@
 %   rx     Feasible region polygon x coordinates
 %   ry     Feasible region polygon y coordinates
 %   dt     Length of the time step
-function thrustregion(l, r, rx, ry, dt)
+%   parm   Initial parameters
+%    1 2       Initial position
+%    3 4       Initial velocity
+%    5 6       Initial direction
+%      7       Initial angular velocity
+%      8       Mass
+%      9       Radius
+function thrustregion(l, r, rx, ry, dt, parm)
 
-M = 20;         % Mass in kg
-R = 1;          % Radius in m
+M = parm(8);         % Mass in kg
+R = parm(9);          % Radius in m
 
-p = [0 0];      % Position
-v = [0 0];      % Velocity
-d = [1 0];      % Direction
-omega = 0;      % Angular velocity
+p = [parm(1) parm(2)];      % Position
+v = [parm(3) parm(4)];      % Velocity
+d = [parm(5) parm(6)];      % Direction
+omega = parm(7);      % Angular velocity
 
 iter = 10;      % ODE solver iterations
 h = dt/iter;    % Iteration step size
