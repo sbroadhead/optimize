@@ -21,31 +21,6 @@ v = [parm(3) parm(4)];      % Velocity
 d = [parm(5) parm(6)];      % Direction
 omega = parm(7);      % Angular velocity
 
-iter = 10;      % ODE solver iterations
-h = dt/iter;    % Iteration step size
-
-% Inputs:
-%   T : time steps
-%   p_dest : destination
-%   p_via : point to go near
-% Independent Variables:
-%   l_k, r_k, dt_k                                    for k = 1 to T
-% Dependent Variables:
-%   px_k, py_k, vx_k, vy_k dx_k, dy_k, w_k, h_k, t_k  for k = 1 to T
-% Constraints:
-%   t_0   = 0
-%   t_k   = t_{k-1} + dt_{k-1}
-%   w_k   = w(t_k)
-%   h_k   = h(t_k)
-%   dx_k  = dx(t_k)
-%   dy_k  = dy(t_k)
-%   vx_k  = vx(t_k)
-%   vy_k  = vy(t_k)
-%   px_k  = px(t_k)
-%   py_k  = py(t_k)
-% Objective:
-%   minimize ||p_k - p_dest|| + sum{ dt_i + ||p_i-p_via|| }
-
 fig = figure( ...
     'Name', 'Thrusters', ...
     'NumberTitle', 'off');
@@ -59,12 +34,15 @@ axis square
 xs = [];
 ys = [];
 
+iters = 10;
+h = dt/iters;
+
 count = length(l);
 for i=2:count+1
-    for j=1:iter
+    for j=1:iters
         % Solve the ODE to get the next state
         y = [p(1) p(2) v(1) v(2) d(1) d(2) omega];
-        
+
         %result = ode45(@(t,y)(thrustODE(t,y,M,R,l(i),r(i))), [0 h], y0);
         soln = step(h,y,M,R,l(i-1),r(i-1));
         %soln = result.y(:,end);
@@ -72,12 +50,15 @@ for i=2:count+1
         v = [soln(3) soln(4)];
         d = [soln(5) soln(6)];
         omega = soln(7);
-        
+        %[d,v,p] = maclaurin(h,10,d,v,p,l(i-1),r(i-1),omega,M,R);
+        %omega = omega + h * 2*(l(i-1)-r(i-1))/(M*R);
+        d = d/norm(d);
+
         xs = [xs p(1)];
         ys = [ys p(2)];
 
         hold on
-        
+
         % Plot the graphic
         cla;
         fill(rx, ry, [0.3 0.3 0.3]);
@@ -89,9 +70,9 @@ for i=2:count+1
             'Color', 'white');
         status = [sprintf('p:(%f %f)\n', p(1), p(2)) sprintf('v:(%f %f)\n', v(1), v(2)) sprintf('lr:(%f %f)\n', l(i-1), r(i-1))];
         text(-15, 5, status);
-     
+
         plot(xs, ys);
-       
+
         drawnow;
     end
 end
@@ -107,6 +88,41 @@ dy(5) = -y(7) * y(6);   % d_x' = -omega * d_y
 dy(6) = y(7) * y(5);    % d_y' = omega * d_x
                         % omega' = 2*R*(l-r) / (M*R^2)
 dy(7) = (2 * (l - r)) / (M * R);
+
+function [d,v,p] = maclaurin(t,n,d,v,p,l,r,omega,M,R)
+a = zeros(n);
+b = zeros(n);
+a(1) = d(1);
+b(1) = d(2);
+a(2) = -b(1)*omega;
+b(2) = a(1)*omega;
+for i=3:n
+    a(i) = (-b(i-1) / (i-1) * omega - (i-1)*b(i-2) / ((i-1)*(i-2)) * 2*(l-r)/(M*R));
+    b(i) = ( a(i-1) / (i-1) * omega + (i-1)*a(i-2) / ((i-1)*(i-2)) * 2*(l-r)/(M*R));
+end
+
+dd = [0 0];
+dv = [0 0];
+dp = [0 0];
+for i=n:-1:1
+    dd(1) = dd(1) * t + a(i);
+    dd(2) = dd(2) * t + b(i);
+    
+    dv(1) = dv(1) * t + a(i)/i;
+    dv(2) = dv(2) * t + b(i)/i;
+    
+    dp(1) = dp(1) * t + a(i)/(i*(i+1));
+    dp(2) = dp(2) * t + b(i)/(i*(i+1));
+end
+
+dv = dv * t * (l+r)/M;
+dp = dp * t * t;
+
+d = dd;
+v = v + dv;
+p = p + t*v + dp;
+
+
 
 function y = step(dt,y,M,R,l,r)
 lasty = y;
