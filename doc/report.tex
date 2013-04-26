@@ -37,13 +37,13 @@ The direction component of the movement is given by a pair of
 coupled differential equations
 \begin{equation} \label{eq:orig}
     \begin{aligned}
-    d_x'(t) &= -d_y(t)(t(l-r)+\omega(t)) C\\
-    d_y'(t) &= \phantom{-}d_x(t)(t(l-r)+\omega(t)) C
+    d_x'(t) &= -d_y(t)\omega(t)\\
+    d_y'(t) &= \phantom{-}d_x(t)\omega(t)
     \end{aligned}
 \end{equation}
-where $l$ and $r$ are constant and $C = 2/MR$. $\omega(t)$ is the angular velocity at time $t$, and
-luckily for us, $\omega'$ is a constant, so we can approximate
-the solution to this differential equation using a Maclaurin series.
+$\omega(t)$ is the angular velocity at time $t$. Luckily,
+$\omega'$ is a constant, so we can approximate
+the solution to this differential equation using a simple Maclaurin series.
 \begin{equation} \label{eq:series}
     \begin{aligned}
     d_x(t) &= \sum_{n=0}^\infty a_n t^n \\
@@ -56,10 +56,10 @@ Substituting Equation \ref{eq:series} into Equation \ref{eq:orig}
     \begin{aligned}
     \sum_{n=0}^\infty n a_n t^{n-1} &=
         -\Bigg[\sum_{n=0}^\infty b_n t^n \Bigg]
-        (t(l-r)+\omega(t)) C \\
+        \omega(t) \\
     \sum_{n=0}^\infty n b_n t^{n-1} &=
         \phantom{-}\Bigg[\sum_{n=0}^\infty a_n t^n \Bigg]
-        (t(l-r)+\omega(t)) C
+        \omega(t)
     \end{aligned}
 \end{equation}
 Letting $t=0$ in Equation \ref{eq:orig} lets us solve for the constant coefficients. $d_x(0)$ and $d_y(0)$ are given,
@@ -75,8 +75,8 @@ Equation \ref{eq:subst} lets us solve for the linear coefficients. $\omega(0)$ i
 fully determined.
 \begin{equation} \label{eq:coeff1}
     \begin{aligned}
-    a_1 &= -b_0\omega(0)C \\
-    b_1 &= \phantom{-}a_0\omega(0)C
+    a_1 &= -b_0\omega(0) \\
+    b_1 &= \phantom{-}a_0\omega(0)
     \end{aligned}
 \end{equation}
 
@@ -91,15 +91,15 @@ First we'll compute the first derivative of Equation \ref{eq:subst}.
 \begin{equation} \label{eq:diff1}
     \begin{aligned}
     \sum_{n=0}^\infty n(n-1)a_n t^{n-2} &=
-        -\Bigg(\Bigg[\sum_{n=0}^\infty nb_n t^{n-1} \Bigg]
-            (t(l-r)+\omega(t))
-                + \Bigg[\sum_{n=0}^\infty b_n t^n \Bigg]
-                (l - r + \omega')\Bigg)C\\
+        -\Bigg[\sum_{n=0}^\infty nb_n t^{n-1} \Bigg]
+            \omega(t)
+                - \Bigg[\sum_{n=0}^\infty b_n t^n \Bigg]
+                \omega'\\
     \sum_{n=0}^\infty n(n-1)b_n t^{n-2} &=
-        \phantom{-}\Bigg(\Bigg[\sum_{n=0}^\infty na_n t^{n-1} \Bigg]
-            (t(l-r)+\omega(t))
+        \phantom{-}\Bigg[\sum_{n=0}^\infty na_n t^{n-1} \Bigg]
+            \omega(t)
                 + \Bigg[\sum_{n=0}^\infty a_n t^n \Bigg]
-                (l - r + \omega')\Bigg)C\\
+                \omega'\\
     \end{aligned}
 \end{equation}
 Next, we'll compute the second derivative of Equation \ref{eq:subst}.
@@ -107,14 +107,14 @@ Next, we'll compute the second derivative of Equation \ref{eq:subst}.
     \begin{gathered}
     \shoveleft{\sum_{n=0}^\infty n(n-1)(n-2)a_n t^{n-3} =}\\
         \qquad\qquad-\Bigg(\Bigg[\sum_{n=0}^\infty n(n-1)b_n t^{n-2} \Bigg]
-             (t(l-r)+\omega(t))
+             \omega(t)
                 + 2\Bigg[\sum_{n=0}^\infty n b_n t^{n-1} \Bigg]
-                (l - r + \omega')\Bigg)C\\
+                \omega'\Bigg)\\
     \shoveleft{\sum_{n=0}^\infty n(n-1)(n-2)b_n t^{n-3} =}\\
         \qquad\qquad\phantom{-}\Bigg(\Bigg[\sum_{n=0}^\infty n(n-1)a_n t^{n-2} \Bigg]
-            (t(l-r)+\omega(t))
+            \omega(t)
                 + 2\Bigg[\sum_{n=0}^\infty n a_n t^{n-1} \Bigg]
-                (l - r + \omega')\Bigg)C\\
+                \omega'\Bigg)\\
     \end{gathered}
 \end{equation}
 We can see a pattern emerge if we continue to take derivatives.
@@ -122,26 +122,26 @@ We can then represent the $k$th derivative of Equation \ref{eq:subst} as
 \begin{equation} \label{eq:diffk}
     \begin{aligned}
     \sum_{n=0}^\infty \frac{n!}{(n-k)!} a_n t^{n-k} =
-        -\Bigg(\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+1)!} b_n t^{n-k+1} \Bigg]
-             (t(l-r)+\omega(t))
+        -\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+1)!} b_n t^{n-k+1} \Bigg]
+             \omega(t)
                 \\
-                +k\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+2)!} b_n t^{n-k+2} \Bigg]
-                (l - r + \omega')\Bigg)C\\
+                {}-k\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+2)!} b_n t^{n-k+2} \Bigg]
+                \omega'\\
     \sum_{n=0}^\infty \frac{n!}{(n-k)!} b_n t^{n-k} =
-        \phantom{-}\Bigg(\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+1)!} a_n t^{n-k+1} \Bigg]
-             (t(l-r)+\omega(t))
+        \phantom{-}\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+1)!} a_n t^{n-k+1} \Bigg]
+             \omega(t)
                 \\
-                + k\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+2)!} a_n t^{n-k+2} \Bigg]
-                (l - r + \omega')\Bigg)C.\\
+                {}+ k\Bigg[&\sum_{n=0}^\infty \frac{n!}{(n-k+2)!} a_n t^{n-k+2} \Bigg]
+                \omega'.\\
     \end{aligned}
 \end{equation}
 Now we can find the $k$th coefficient by
 \begin{equation}
     \begin{aligned}
         a_k &= d_x^{(k)}(0)/n! \\
-            &= -\big(b_{k-1} \omega(0) - k b_{k-2} (l - r + \omega')\big)C,\\
+            &= -b_{k-1} \omega(0) - k b_{k-2} \omega',\\
         b_k &= d_y^{(k)}(0)/n! \\
-            &= \phantom{-}\big(a_{k-1} \omega(0) + k a_{k-2} (l - r + \omega')\big)C.
+            &= \phantom{-}a_{k-1} \omega(0) + k a_{k-2} \omega'.
     \end{aligned}
 \end{equation}
 \end{document}
