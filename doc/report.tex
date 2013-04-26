@@ -106,15 +106,15 @@ Next, we'll compute the second derivative of Equation \ref{eq:subst}.
 \begin{equation} \label{eq:diff2}
     \begin{gathered}
     \shoveleft{\sum_{n=0}^\infty n(n-1)(n-2)a_n t^{n-3} =}\\
-        \qquad\qquad-\Bigg(\Bigg[\sum_{n=0}^\infty n(n-1)b_n t^{n-2} \Bigg]
+        \qquad\qquad-\Bigg[\sum_{n=0}^\infty n(n-1)b_n t^{n-2} \Bigg]
              \omega(t)
-                + 2\Bigg[\sum_{n=0}^\infty n b_n t^{n-1} \Bigg]
-                \omega'\Bigg)\\
+                - 2\Bigg[\sum_{n=0}^\infty n b_n t^{n-1} \Bigg]
+                \omega'\\
     \shoveleft{\sum_{n=0}^\infty n(n-1)(n-2)b_n t^{n-3} =}\\
-        \qquad\qquad\phantom{-}\Bigg(\Bigg[\sum_{n=0}^\infty n(n-1)a_n t^{n-2} \Bigg]
+        \qquad\qquad\phantom{-}\Bigg[\sum_{n=0}^\infty n(n-1)a_n t^{n-2} \Bigg]
             \omega(t)
                 + 2\Bigg[\sum_{n=0}^\infty n a_n t^{n-1} \Bigg]
-                \omega'\Bigg)\\
+                \omega'\\
     \end{gathered}
 \end{equation}
 We can see a pattern emerge if we continue to take derivatives.
@@ -135,13 +135,13 @@ We can then represent the $k$th derivative of Equation \ref{eq:subst} as
                 \omega'.\\
     \end{aligned}
 \end{equation}
-Now we can find the $k$th coefficient by
+Now we can find the $k$th coefficient (for $k > 1$) by
 \begin{equation}
     \begin{aligned}
-        a_k &= d_x^{(k)}(0)/n! \\
-            &= -b_{k-1} \omega(0) - k b_{k-2} \omega',\\
-        b_k &= d_y^{(k)}(0)/n! \\
-            &= \phantom{-}a_{k-1} \omega(0) + k a_{k-2} \omega'.
+        a_k &= d_x^{(k)}(0)/k! \\
+            &= -\Bigg[ \frac{b_{k-1} \omega(0)}{k}  + \frac{b_{k-2} \omega'}{k-1}  \Bigg],\\
+        b_k &= d_y^{(k)}(0)/k! \\
+            &= \phantom{-} \Bigg[ \frac{a_{k-1} \omega(0)}{k}  + \frac{a_{k-2} \omega'}{k-1}  \Bigg].
     \end{aligned}
 \end{equation}
 \end{document}
