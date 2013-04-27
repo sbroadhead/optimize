@@ -28,6 +28,85 @@ Abstract goes here
 
 %%%%%
 \chapter{Problem Overview}
+\section{A Pathfinding Problem}
+Pathfinding is a very important topic in the field of Computer Science.
+Generally, when we talk about pathfinding algorithms, we talk about
+algorithms to find the optimal path (for some objective function) through
+a graph from a source vertex to a destination vertex. Even in
+non-graph contexts---for example in video games---the more general problem
+of finding a path through Euclidian space is often restricted to a graph
+for simplicity.
+
+But what if the problem is not able to be solved in this way? What if
+we want to find a path between two points through a series of obstacles,
+but without foreknowledge of the layout? That is, the only information
+that we have is the information that we can currently see. Furthermore,
+what if we cannot control our position directly, but can only control
+some other parameters? Then the problem becomes much trickier.
+\vspace{0.5em}
+
+Consider the following problem:
+\vspace{0.5em}
+
+You have a circular spaceship with radius $r$ and mass $m$
+in two dimensions located at some point $\mathbf{p}$ equipped with thrusters
+on a pair of antipodal points. There
+is a known point $\mathbf{q}$ somewhere on the plane, and you want to
+get the spaceship there in a reasonable amount of time. Also present
+in the space are large polygonal obstacles (e.g., asteroids) 
+that must be avoided en route
+to $\mathbf{q}$. Although you know where $\mathbf{q}$ is in relation to
+$\mathbf{p}$, you don't know where the obstacles are, aside from the
+points that you can actually see.
+
+The only way to move the ship is to turn the thrusters up or down. 
+For the purposes of this problem, the thrusters are infinitely small
+and lie extactly on the circumference of the ship, with thrust being
+applied tangentially.
+To
+move forward, set them to an equal positive force. To move backward,
+set them to an equal negative force. To spin around,
+the sum should be zero. There is no
+way to directly control where in space the ship is at any given time,
+or even how fast it is moving; only the acceleration can be controlled
+directly, by the thrusters. The thrusters must also be gradually changed
+over time; they cannot jump instantly from 10 Newtons to $-10$ Newtons,
+for example.
+\vspace{0.5em}
+
+In this report, we will attempt to describe a method of solving this
+problem using nonlinear optimization methods.
+
+\section{Approach}
+Taken as a whole, this problem does not lend itself well to numerical
+optimization. The problem itself is inherently non-convex due to the
+feasible space having holes in it where the obstacles are, so it is likely
+that a solution could not even be found using the usual constrained
+optimization methods.
+
+There is, however, a simpler problem that we \emph{can} solve with
+constrained optimization, and it happens to be a natural subproblem of
+the problem we are really trying to solve. Consider the original
+problem, except without any obstacles; we want to compute a trajectory
+between two points \emph{within a convex region}. If we can do that,
+then we can break the original feasible problem space into convex
+regions and solve the subproblem within each region. We can then focus
+on solving two separate problems: determining the convex subregions, and 
+finding a feasible trajectory within each.
+
+We want to guarantee that the ship doesn't crash, but since we can't see
+into the future (at least not beyond the end of the current subproblem),
+we need to impose a constraint on the subproblems that
+may at first seem drastic:
+within each convex subregion, the trajectory from $\mathbf{p}$ to
+$\mathbf{q}$ must come to a stop at the end. That doesn't mean, however, that the
+ship will be frequently stopping and starting during its journey;
+computing such a trajectory only proves that it \emph{can} stop. If we
+follow our computed trajectory for only a short amount of time before
+throwing it out and solving a new subproblem---hopefully with some new
+information each time---we can keep moving closer and closer to the
+destination, all the while knowing that we can stop if we must.
+
 
 %%%%%
 
