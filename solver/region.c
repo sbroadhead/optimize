@@ -14,7 +14,7 @@
 #include <math.h>
 #include "region.h"
 
-#define USE_MACLAURIN 1
+#define USE_MACLAURIN 0
 
 /* Compute the derivative with respect to the {var}th variable in the 
  * input vector.
