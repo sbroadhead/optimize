@@ -112,6 +112,10 @@ destination, all the while knowing that we can stop if we must.
 %%%%%
 
 \chapter{Finding a Trajectory in a Convex Region}
+The majority of the work we did focused on the subproblem of finding feasible
+trajectories within a convex region. This is the aspect of the problem that utilizes
+continuous nonlinear optimization methods and so this is where we devoted most
+of our time.
 \section{Modeling the Thrust Profile}
 Since this is an optimization problem over time, we must decide how we will encode
 the passage of time within the problem. In particular, we must decide how we will
@@ -211,10 +215,12 @@ the direction of the ship.
 There is no simple closed-form solution to this system, so we must approximate a solution
 by discretising the system and solving it iteratively over much smaller time steps.
 
-\subsection{Approximation by Linearization} \label{sec:linearapprox}
-The most straightforward way to solve the system is by linearizing it. By ignoring
-curvature, we can approximate the solution over a time step by defining some step size $h \ll \Delta_t$
-and iterating a linear approximation over the smaller steps.
+\subsection{Approximation by Finite Differences} \label{sec:linearapprox}
+The most straightforward way to solve the system is by taking the variables to be piecewise constant.
+By ignoring
+variations within each time step,
+we can approximate the solution over a time step by defining some step size $h \ll \Delta_t$
+and iterating a finite difference approximation over the smaller steps.
 If we choose a small enough step size that the behaviour of the
 functions within each interval is nearly linear, we will achieve sufficient accuracy. We can approximate
 the solution in time step $i$ with the following recurrence:
@@ -367,7 +373,7 @@ Velocity and position are then trivial to compute by the first and second antide
 of the series.
 
 In practice, the series expansion method of solving the differential equations is less effective
-than the linearization outlined in Section~\ref{sec:linearapprox}. By truncating the Maclaurin series, we
+than the approach outlined in Section~\ref{sec:linearapprox}. By truncating the Maclaurin series, we
 are introducing a significant amount of error as $t$ deviates from $0$. Thus, we need a very small step size
 to avoid accumulating massive errors over the whole trajectory.
 
@@ -412,6 +418,11 @@ Now we can formulate the problem mathematically like this:
 Where the function $D(\mathbf{p}, \mathbf{q})$ is defined as the distance from the point $\mathbf{p}$ to the line
 specified by the slope-intercept pair $\mathbf{q}$. We let the variables subscripted with $0$ be the initial
 values of the variables, if applicable.
+
+This is not a definitive objective function and given more time, more tuning could be done. For example,
+it might be advantageous (or even necessary) to penalize angular velocity at the end of the trajectory to 
+avoid spinning wildly out of the control, or to try to fix the angle of the ship at the end.
+These types of modifications can be made as necessary.
 
 \section{Solving with L-BFGS}
 To solve the problem computationally we had to choose an optimization method. Ultimately, the L-BFGS method is
@@ -472,6 +483,7 @@ velocity, we had to increase the maximum number of line search iterations quite 
 algorithm to find a sufficient step length after the initial guess.
 
 \begin{figure}
+\begin{minipage}{\linewidth}
 \begin{minipage}[t]{0.45\linewidth}
     \centering
     \includegraphics[width=\linewidth]{fig1.png}
@@ -495,8 +507,6 @@ algorithm to find a sufficient step length after the initial guess.
     \mathbf{d_0} &= (1, 0)
     \end{align*}
     }\end{minipage}
-\end{figure}
-\begin{figure}
 \begin{minipage}[t]{0.45\linewidth}
     \centering
     
@@ -522,7 +532,112 @@ algorithm to find a sufficient step length after the initial guess.
     \end{align*}
     }
 \end{minipage}
+\end{minipage}
 \end{figure}
+
+\section{Other Implementations}
+In the course of coming up with a solver for this problem, we tried other
+types of algorithms that, for various reasons, failed to provide usable solutions.
+\subsection{AMPL as a Solver}
+Using a domain-specific tool like the AMPL programming language has benefits
+when trying to solve non-linear constrained optimization problems because it
+allows a much higher level description of the problem than a C solver, for instance.
+Still, AMPL as a language is that it has a steep learning curve; AMPL (and the
+resources available online) assumes that you are extremely comfortable with
+formulating optimization
+problems and even comfortable writing them in other languages. That being said
+we did make some progress with specifying some optimization problems with it,
+but the implementations are still lacking.
+
+AMPL allowed us to make some leaps down the avenue of best-case optimization for
+many sub-problems but was never completely integrated to provide a full problem
+solution. However, since the main project itself was broken down into smaller
+pieces, it seems appropriate that the level of AMPL code coincide with the
+level of the project completeness. Therefore, the AMPL code was developed in
+three distinct parts: simple movement in one direction with constrained velocity
+and no acceleration; simple movement in one direction with constrained velocity
+and acceleration with set time intervals; and simple rotation with constrained
+velocity, acceleration, and moment of inertia. The three parts respectively optmized the
+following variables: time, force input/output required, and energy.
+Using these three development pathways we were able to solve some of the major
+optimizing challenges, albeit separately.
+
+The first pathway tries to examine how the tradeoff between time and energy
+expenditure occurs while simply moving an object in a single direction. We set
+the variables $N$ for discrete time intervals, time $t$, final position $\mathbf{x}_\text{final}$
+and
+scalar position coefficients $q$ and $r$. We then solve for the minimized force
+tradeoff while moving the object, subject to the velocity and acceleration from
+kinematic relationships. 
+
+The second pathway allows for examining how an object needs to be constrained 
+and tests minimizing time as opposed to energy expenditure (per movement). The
+We set the parameters $\mathbf{x}_0$ and $\mathbf{x}_\text{final}$ for initial and
+final position, $\mathbf{v}_0$ and $\mathbf{v}_\text{final}$ for
+intial and final velocity and $\mathbf{x}_i$, $\mathbf{v}_i$, $\mathbf{a}_i$
+for discretizations of position,
+velocity, and acceleration respectively, for $1 \leq i \leq N$ where $N$
+is the number of discrete
+time intervals. We then subject those parameters to simple kinematics definitions
+for velocity and acceleration and set the intial position and velocity vectors,
+as well as intial conditions for number of steps, max speed, and max force.
+Using these variables we solve, minimizing the total time $t$. 
+
+The third pathway tries to solve the idea of trajectory setting with a radial
+arm, since the project we are interested in solving uses a disc with a
+paramaterized radius, the third pathway attempts to describe how to optimize
+trajectory selection while optimizing least energy used, which is not the focus
+of our problem, but provides at least some insite to how the problem can be 
+tackled. It isn't a perfect model, and does not apply directly so there is no
+need to go into more depth about it. However, it should be noted that this
+experiment helped further understand how rotational kinematics can be optimized
+in general.
+
+\subsection{Symbolic Computation using Haskell}
+Our initial attempt at computing the objective function and its gradient
+involved attempting to find a closed-form symbolic expression that can be
+rendered in C and evaluated relatively quickly. To this end, we made two attempts
+at constructing a domain-specific language (DSL) embedded in the Haskell programming
+language.
+
+In the first attempt, we constructed a simple algebraic datatype for expressing
+symbolic expressions containing variables. Optimization problems could be
+expressed in a monadic context using quantifiers over arrays and recurrence
+relations. Equality constraints are automatically eliminated via substitution,
+and the calculation of the gradient is automatic. The resulting expressions can
+be used to generate C or C++ code that detects common subexpressions, and
+introduces sharing to make the computation as fast as possible. We tested this
+on several test problems, such as computing a high-order best-fit polynomial,
+minimizing a high-dimensional Rosenbrock function, and in each case were
+pleased with the results. We used the same base L-BFGS solver code (using
+\texttt{libLBFGS}) to optimize the generated objective function as the one we
+ultimately used for the hand-coded objective function.
+
+Although our toy functions worked very well in our tests, DSL proved no match
+for the complexity of the trajectory objective function. The highly recursive
+nature of the motion model means that to eliminate the equality constraints (i.e.,
+the entire motion model), all references to position, velocity, and rotation
+must be replaced by massive expressions dependent only on the $l_i$ and $r_i$
+variables, and that is not even including any intermediate steps that we would
+use to increase the accuracy of the differential equation solution (e.g., Runge-Kutta
+or finite differences). Our DSL did in fact manage to compute the objective function
+for this simplified case, although it failed to compute the gradient without
+running out of memory.
+
+Our second approach used a more clever model of storing expressions. Rather than
+storing expressions in a tree and explicitly looking for common subexpressions
+during code generation, we used the libraries \texttt{Data.Hashable} and \texttt{GHC.Generics}
+to automatically generate hashes of expressions which are stored in an implicit
+graph structure, so subexpression sharing is automatic. Using this method, our
+objective function was able to be generated but the gradient was still too
+large to be generated in a reasonable amount of time. In the interests of time,
+we abandoned this approach in favour of the already-working hand-coded objective
+function with numerical differentiation.
+
+\chapter{Picking a Convex Subregion}
+Now that we have a method for finding a trajectory within a convex subregion, we
+need to find a way to integrate that into the larger problem.
+
 
 \bibliographystyle{plain}
 \bibliography{report}
