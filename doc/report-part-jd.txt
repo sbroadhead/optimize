@@ -1,0 +1,51 @@
+Using AMPL
+ 
+Using a tool like the AMPL programming language definitely has its benefits
+when trying to solve non-linear constrained optimization problems - the catch
+is that AMPL as a language is that it has a steep learning curve. There are
+many assumptions made given the available resources, namely that using AMPL
+assumes that you are extremely comfortable with formulating linear optimization
+problems and even comfortable writing them in other languages. That being said
+there was some progress made with developing some optimization problems with it
+but there is something left to be desired in the implementations.
+
+AMPL allowed us to make some leaps down the avenue of best-case optimization for
+many sub-problems but was never completely integrated to provide a full problem
+solution. However, since the main project itself was broken down to smaller
+pieces, it seems appropriate that the level of AMPL code coincide with the
+level of the project completeness. Therefore, the AMPL code was developed in
+three distinct parts: simple movement in one direction with constrained velocity
+and no acceleratioin, simple movement in one direction with constrained velocity
+and acceleration with set time intervals, simple rotation with constrained
+velocity, acceleration and moment of inertia. The three parts optmized the
+following variables respectively: time, force input/output required, and energy.
+Using these three development pathways we were able to solve some of the major
+optimizing challenges, albeit separately.
+
+The first pathway tries to examine how the tradeoff between time and energy
+expenditure occurs while simply moving an object in a single direction. We set
+the variables N for discrete time intervals, time T, final position xf and
+scalar position coefficients q and r. We then solve for the minimized force
+tradeoff while moving the object, subject to the velocity and acceleration from
+kinematic relationships. 
+
+The second pathway allows for examining how an object needs to be constrained 
+and tests minimizing time as opposed to energy expenditure (per movement). The
+We set the variables (x_0, x_n) for initial and final position, (v_0, v_n) for
+intial and final velocity and N_x, N_v, N_a for discretizations of position,
+velocity and acceleration respectively. Where N would be the number of discrete
+time intervals. Then subject those parameters to simple kinematics definitions
+for velocity and acceleration. Set the intial position and velocity vectors,
+as well as intial conditions as N-number of steps, max speed and max force.
+Using these variables we solve, minimizing time T. 
+
+The third pathway tries to solve the idea of trajectory setting with a radial
+arm, since the project we are interested in solving uses a disc with a
+paramaterized radius, the third pathway attempts to describe how to optimize
+trajectory selection while optimizing least energy used, which is not the focus
+of our problem, but provides at least some insite to how the problem can be 
+tackled. It isn't a perfect model, and does not apply directly so there is no
+need to go into more depth about it, however, it should be noted that this
+experiment helped further understand how rotational kinematics can be optimized
+in general.
+
