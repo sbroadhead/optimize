@@ -7,6 +7,10 @@
 \usepackage{nicefrac}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{url}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{caption}
 
 \begin{document}
 \title{Computing a Feasible Trajectory Through an Obstacle Field Using Nonlinear Constrained Optimization}
@@ -20,11 +24,6 @@
     Subramanian Venkatesan
 }
 \maketitle
-
-%%%%%
-\begin{abstract}
-Abstract goes here
-\end{abstract}
 
 \tableofcontents
 
@@ -79,7 +78,7 @@ for example.
 In this report, we will attempt to describe a method of solving this
 problem using nonlinear optimization methods.
 
-\section{Approach}
+\section{A Piecewise Approach}
 Taken as a whole, this problem does not lend itself well to numerical
 optimization. The problem itself is inherently non-convex due to the
 feasible space having holes in it where the obstacles are, so it is likely
@@ -234,7 +233,7 @@ In practice, this gives good results for $h = \nicefrac{\Delta_t}{5}$, although 
 safer step size of $h = \nicefrac{\Delta_t}{10}$.
 
 
-\subsection{Power Series Approximation of System}
+\subsection{Power Series Approximation of System} \label{sec:power}
 Although the approximation model given in Section~\ref{sec:linearapprox}
 achieves good results, we wanted to try to find a model that would not ignore higher-order
 variation in the solution.
@@ -446,5 +445,86 @@ The overall maximum thrust at any given time is not likely to be large due
 to the constraint that the ship must be able to stop,
 so hopefully having non-zero thrust as an initial guess will not result in the initial trajectory falling so far
 outside of the boundary that numerical errors prevent the solver from pulling it back in.
+
+\section{Implementation and Results}
+The L-BFGS solver was implemented in C using
+\texttt{libLBFGS}\footnote{\url{http://www.chokkan.org/software/liblbfgs/}}, a C port of 
+Jorge Nocedal's original L-BFGS impementation in FORTRAN. Computation of the objective function
+and its gradient are done completely numerically using the iterative methods described in 
+Sections~\ref{sec:linearapprox}~and~\ref{sec:power}. The gradient is calculated using finite differences
+across each of the variables, which means that for $N$ variables, we require $2N+1$ function evaluations
+to fully compute the objective function and its gradient. Combined with the iterative backtracingline search used
+in \texttt{libLBFGS}, this means we are performing a huge amount of computation. Computing a trajectory with
+20 time steps may take 20 seconds or more on a moderately powerful computer.
+
+The bulk of the computation takes place in the gradient calculation. There is a stochastic method of
+calculating the gradient using only two function evaluations regardless of the problem size detailed in
+\cite{Spall92multivariatestochastic}, but we did not have time to investigate its usage. Given that it would
+reduce the problem to three function evaluations instead of $2N+1$, it makes sense that this would significantly 
+speed up the process.
+
+The trajectory information output by the solver is given in the format of several MATLAB variables which can be
+used as input to a visualization tool written in MATLAB that uses the same iterative solver as the C code.
+This way, we can see what the trajectory looks like and verify that it behaves correctly.
+Figures~\ref{fig:fig1}, \ref{fig:fig2}, \ref{fig:fig3}, and \ref{fig:fig4} show some examples of trajectory
+from the origin aimed at the point $(6, 6)$ under various initial conditions. For the cases with high initial
+velocity, we had to increase the maximum number of line search iterations quite drastically in order for the L-BFGS
+algorithm to find a sufficient step length after the initial guess.
+
+\begin{figure}
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig1.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:fig1}Simple trajectory \begin{align*}
+    \omega_0 &= 0 \\
+    \mathbf{v_0} &= (0, 0)\\
+    \mathbf{d_0} &= (1, 0)
+    \end{align*}
+    }
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{fig2.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:fig2}High initial velocity \begin{align*}
+    \omega_0 &= 0 \\
+    \mathbf{v_0} &= (3, 0)\\
+    \mathbf{d_0} &= (1, 0)
+    \end{align*}
+    }\end{minipage}
+\end{figure}
+\begin{figure}
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{fig3.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:fig3}High initial velocity in the wrong direction\begin{align*}
+    \omega_0 &= 0 \\
+    \mathbf{v_0} &= (0, -2.5)\\
+    \mathbf{d_0} &= (0, -1)
+    \end{align*}
+    }
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{fig4.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:fig4}Initial rotation\begin{align*}
+    \omega_0 &= 1 \\
+    \mathbf{v_0} &= (0, 0)\\
+    \mathbf{d_0} &= (1, 0)
+    \end{align*}
+    }
+\end{minipage}
+\end{figure}
+
+\bibliographystyle{plain}
+\bibliography{report}
 
 \end{document}
