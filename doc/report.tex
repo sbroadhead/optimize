@@ -26,6 +26,8 @@
 Abstract goes here
 \end{abstract}
 
+\tableofcontents
+
 %%%%%
 \chapter{Problem Overview}
 \section{A Pathfinding Problem}
@@ -111,8 +113,134 @@ destination, all the while knowing that we can stop if we must.
 %%%%%
 
 \chapter{Finding a Trajectory in a Convex Region}
-\section{Power Series Approximation to the Direction}
-The direction component of the movement is given by a pair of
+\section{Modeling the Thrust Profile}
+Since this is an optimization problem over time, we must decide how we will encode
+the passage of time within the problem. In particular, we must decide how we will
+determine the amount of thrust that should be applied by the left and right thrusters
+at each point in the time interval.
+
+We must define a pair of thrust profile functions
+\[ f_L(t), f_R(t) : \mathbb{R} \to \mathbb{R}. \]
+That is, for each time, we have two real numbers representing the force from the left and right
+thrusters.
+This function would ideally be simple and characterized by a relatively small number of variables (i.e.,
+a low-degree polynomial).
+
+We did not have time to explore the general case of this function. For example two functions of the form
+\[ t \mapsto \alpha_0 + \alpha_1 t + \alpha_2 t^2 + \alpha_3 \sin(\alpha_4 t) \]
+might be sufficient to model the type of simple motion we would like the solver to generate.
+
+Generally the trajectory we are looking can be divided roughly into
+two phases: correcting the existing momentum to accelerate towards the target point, and 
+decelerating to come to a stop at the end of the interval. In this case, the trajectory
+might be represented as a spline made up of one polynomial for each phase.
+
+For simplicity, however, we chose to represent the thrust profile as a piecewise constant
+function. In this model, there are two different ways we can discretise the time domain:
+fixed time steps or variable time steps.
+
+In the variable-time-step approach, the length of each time step is introduced as an additional
+variable in the optimization problem. There are several benefits to this approach.
+For one, it allows the solver to use the limited number of time steps more efficiently; in a
+fixed-time-step approach, there may be a long stretch of time (say, half of the time steps)
+during which the thrusters have very little variation from one step to the next followed by a
+precise maneuver requiring rapid changes in the thrust levels. By using variable time steps,
+the solver would be able to put the first part of the trajectory into one or two longer time steps
+and use the remaining ones for more precise control over several small time steps.
+
+Another benefit of the variable-time-step approach is that it allows direct measurement of the time
+needed to complete the trajectory, which is simply the sum of each time step length.
+With appropriate constraints on the trajectory (i.e., to prevent the ship from overshooting
+or orbiting the target before reaching it) this could be used to have the solver minimize the 
+length of the trajectory.
+
+The obvious detriment to this approach is that for $N$ time steps, we are introducing $N$ new
+variables to the problem. This makes the gradient of the objective function significantly
+more expensive to calculate. Worse, this may introduce some severely non-convex behaviour
+resulting the solver getting stuck in a local minimum. For a trivial example of non-convexity,
+we can, given a trajectory that has
+``left-over'' (i.e., zero-length) time steps at the end, construct an identical
+trajectory by splitting one of the nonzero time steps into two identical time steps.
+
+Ultimately, we decided on using the fixed-time-step approach. Not only did this simplify the
+objective function considerably by converting many variables to constants, it also
+gave better results in our experiments. We consider the constants $\Delta_t$ (the time step
+length) and $N$ (the number of time steps) to be parameters of the optimization problem, to
+be tuned for each instance of the problem.
+
+Thus, we introduce the following parameters:
+
+\begin{align*}
+    \Delta_t \in \mathbb{R} &: \text{Length in seconds of one time step} \\
+    N \in \mathbb{Z} &: \text{Total number of time steps}
+\end{align*}
+
+With that decision made, we can introduce the only independent variables in the problem:
+\begin{alignat*}{3}
+    & l_i \in \mathbb{R} &&: \text{Thrust in Newtons from the left thruster at time $i$} && \quad (1 \leq i \leq N) \\
+    & r_i \in \mathbb{R} &&: \text{Thrust in Newtons from the right thruster at time $i$} && \quad (1 \leq i \leq N)
+\end{alignat*}
+
+\section{Modeling Motion} \label{sec:motion}
+Having chosen a hopefully suitable thrust profile model, we must now figure out how to
+convert that thrust into motion.
+
+In our simplified physics model of the 2-d ship, we consider there to be no friction,
+and that the mass does not change over time (i.e., from fuel loss).
+
+First we will define a couple of parameters that characterize the physical properties of
+the ship:
+\begin{align*}
+    M \in \mathbb{R} &: \text{Mass of the ship in kilograms} \\
+    R \in \mathbb{R} &: \text{Radius if the ship in metres} \\
+    \Delta_\text{thrust} \in \mathbb{R} &: \text{The maximum change in thrust per second}
+\end{align*}
+
+Since the only direct control we have over the ship's motion is by setting the force of the
+left and right thrusters, we can represent the motion of the ship during time step $i$
+as a system of differential
+equations:
+\begin{alignat*}{4}
+    \omega'_i(t) &= \frac{2(l_i - r_i)}{MR} & \qquad \omega &: \text{angular velocity} \\
+    \mathbf{d}'_i(t) &= \mathbf{d}_i^{\perp}(t) \omega(t) & \qquad \mathbf{d} &: \text{orientation unit vector} \\
+    \mathbf{v}'_i(t) &= \frac{l_i + r_i}{M} \mathbf{d}_i(t) & \qquad \mathbf{v} &: \text{translational velocity} \\
+    \mathbf{p}'_i(t) &= \mathbf{v}_i(t) & \qquad \mathbf{p} &: \text{position}
+\end{alignat*}
+In this system, $\mathbf{d}^{\perp}$ refers to the vector $(-d_y, d_x)$, a vector perpendicular to
+the direction of the ship. 
+
+There is no simple closed-form solution to this system, so we must approximate a solution
+by discretising the system and solving it iteratively over much smaller time steps.
+
+\subsection{Approximation by Linearization} \label{sec:linearapprox}
+The most straightforward way to solve the system is by linearizing it. By ignoring
+curvature, we can approximate the solution over a time step by defining some step size $h \ll \Delta_t$
+and iterating a linear approximation over the smaller steps.
+If we choose a small enough step size that the behaviour of the
+functions within each interval is nearly linear, we will achieve sufficient accuracy. We can approximate
+the solution in time step $i$ with the following recurrence:
+\begin{align*}
+    \Delta\omega &= \frac{2(l_i - r_i)}{MR} \\
+    \omega_k &= \omega_{k-1} + h \Delta\omega \\
+    \theta &= \frac{h}{2} (\omega_{k-1} + \omega_k) \\
+    \mathbf{d}_k &= \begin{bmatrix}\cos \theta & -\sin \theta \\ \sin \theta & \cos \theta\end{bmatrix} \mathbf{d}_{k-1} \\
+    \mathbf{a}_k &= \frac{l_i + r_i}{M} \mathbf{d}_{k} \\
+    \mathbf{v}_k &= \mathbf{v}_{k-1} + \mathbf{a}_{k-1} h \\
+    \mathbf{p}_k &= \mathbf{p}_{k-1} + \mathbf{v}_{k-1} h + \frac{\mathbf{a}_{k-1}}{2} h^2
+\end{align*}
+Note that in this case $\omega_k$ is an exact solution, since $\omega' = \Delta\omega$ is a constant.
+
+In practice, this gives good results for $h = \nicefrac{\Delta_t}{5}$, although we chose a
+safer step size of $h = \nicefrac{\Delta_t}{10}$.
+
+
+\subsection{Power Series Approximation of System}
+Although the approximation model given in Section~\ref{sec:linearapprox}
+achieves good results, we wanted to try to find a model that would not ignore higher-order
+variation in the solution.
+
+Expanding the $\mathbf{d}^{\perp}$ notation,
+the direction component of the movement is given by a pair of
 coupled differential equations
 \begin{equation} \label{eq:orig}
     \begin{aligned}
@@ -120,9 +248,22 @@ coupled differential equations
     d_y'(t) &= \phantom{-}d_x(t)\omega(t)
     \end{aligned}
 \end{equation}
-$\omega(t)$ is the angular velocity at time $t$. Luckily,
-$\omega'$ is a constant, so we can approximate
-the solution to this differential equation using a simple Maclaurin series.
+Since $\omega'$ is constant, this has an easy solution:
+\newcommand*{\trigarg}{\Bigg(\omega(0) t + \frac{\omega'}{2} t^2 \Bigg)}
+\begin{equation}
+    \begin{aligned}
+    d_x(t) &= d_x(0) \cos \trigarg - d_y(0) \sin \trigarg \\
+    d_y(t) &= d_x(0) \sin \trigarg + d_y(0) \cos \trigarg
+    \end{aligned}
+\end{equation}
+Unfortunately, this isn't very useful, because we have to integrate these
+functions in order to find velocity and position, and the non-linearity of the arguments
+to $\sin$ and $\cos$ means there's no nice way to eliminate the integral.
+
+Instead, we can find the power series expansion of the solution to Equation~\ref{eq:orig}
+which, being a polynomial, will be trivial to integrate. We start by representing $d_x$ and
+$d_y$ as polynomials in $t$.
+
 \begin{equation} \label{eq:series}
     \begin{aligned}
     d_x(t) &= \sum_{n=0}^\infty a_n t^n \\
@@ -141,7 +282,7 @@ Substituting Equation \ref{eq:series} into Equation \ref{eq:orig}
         \omega(t)
     \end{aligned}
 \end{equation}
-Letting $t=0$ in Equation \ref{eq:orig} lets us solve for the constant coefficients. $d_x(0)$ and $d_y(0)$ are given,
+Letting $t=0$ in Equation \ref{eq:orig} lets us solve for the constant coefficients. $d_x(0)$ and $d_y(0)$ are known,
 so $a_0$ and $b_0$ are fully determined.
 \begin{equation} \label{eq:coeff0}
     \begin{aligned}
@@ -150,7 +291,7 @@ so $a_0$ and $b_0$ are fully determined.
     \end{aligned}
 \end{equation}
 Letting $t=0$ in
-Equation \ref{eq:subst} lets us solve for the linear coefficients. $\omega(0)$ is given, so $a_1$ and $b_1$ are also
+Equation \ref{eq:subst} lets us solve for the linear coefficients. $\omega(0)$ is known, so $a_1$ and $b_1$ are also
 fully determined.
 \begin{equation} \label{eq:coeff1}
     \begin{aligned}
@@ -223,4 +364,87 @@ Now we can find the $k$th coefficient (for $k > 1$) by
             &= \phantom{-} \Bigg[ \frac{a_{k-1} \omega(0)}{k}  + \frac{a_{k-2} \omega'}{k-1}  \Bigg].
     \end{aligned}
 \end{equation}
+Velocity and position are then trivial to compute by the first and second antiderivatives
+of the series.
+
+In practice, the series expansion method of solving the differential equations is less effective
+than the linearization outlined in Section~\ref{sec:linearapprox}. By truncating the Maclaurin series, we
+are introducing a significant amount of error as $t$ deviates from $0$. Thus, we need a very small step size
+to avoid accumulating massive errors over the whole trajectory.
+
+\section{Optimizing the Trajectory}
+Before we can optimize the trajectory in our region, we must decide what it means to
+be an optimal trajectory. There are some necessary constraints that we want to obey always. Specifically,
+the trajectory should never leave our convex sub-region, the ship should come to a stop at the end of
+the trajectory, and the thruster values should not vary too rapidly between time steps.
+
+The obvious formulation of the problem might be something like ``find the trajectory that reaches the destination
+in the minimal time such that the final position is sufficiently near the destination''. There are a couple of problem
+with this idea. For one, since we chose to use fixed time steps, we don't have a direct way of measuring how
+long it takes to reach the destination. Another problem is that every optimization problem requires an initial guess---one
+which satisfies all the constraints---and the problem of finding an initial trajectory that winds up at the destination
+is almost as hard as the whole problem we're trying to solve. However, with some cleverness, we can relax the constraints
+so that we can find a trivial initial guess and still find a good trajectory.
+
+The new formulation of the problem is ``minimize the total sum of the distances from the destination at
+every point''. Note that there is no constraint that the ship ends up at the destination. This means that the
+zero vector constitutes a valid initial guess, and the solver will still find a trajectory that moves towards the
+destination relatively quickly. There is no guarantee that the trajectory actually stops at the destination, but
+since we only care about moving towards and then discarding the trajectory, this compromise is reasonable.
+
+We must introduce a new parameter:
+\begin{align*}
+    E \in \mathcal{P}(\mathbb{R}^2) &: \text{Set of lines which form the edges of the convex subregion}
+\end{align*}
+For the mathematical formulation we can specify the lines as a slope-intercept pair, but in practice, the polygons
+are specified as a list of points.
+
+Now we can formulate the problem mathematically like this:
+\begin{equation*}
+\begin{aligned}
+& \text{minimize}
+& & \sum_{i=1}^N \| \mathbf{p}_i - \mathbf{p}_\text{target} \|^2\\
+& \text{subject to}
+&& \lvert l_{i} - l_{i-1} \rvert &&\leq \Delta_t \Delta_\text{thrust} && \text{for all $1 \leq i \leq N$} \\
+& && \lvert r_{i} - r_{i-1} \rvert &&\leq \Delta_t \Delta_\text{thrust} && \text{for all $1 \leq i \leq N$} \\
+& && R - \min_{\mathbf{q} \in E} \{ D(\mathbf{p}_i, \mathbf{q}) \} &&< 0 && \text{for all $1 \leq i \leq N$} \\
+\end{aligned}
+\end{equation*}
+Where the function $D(\mathbf{p}, \mathbf{q})$ is defined as the distance from the point $\mathbf{p}$ to the line
+specified by the slope-intercept pair $\mathbf{q}$. We let the variables subscripted with $0$ be the initial
+values of the variables, if applicable.
+
+\section{Solving with L-BFGS}
+To solve the problem computationally we had to choose an optimization method. Ultimately, the L-BFGS method is
+the only option we seriously entertained. Calculating the Hessian of our objective function would be far too 
+computationally expensive to use a Newtonian method, and the problem is too complicated to try to calibrate a
+trust region model. L-BFGS code is readily available online and is very robust, so that's what we chose to use.
+
+The biggest issue with using L-BFGS to solve this problem is the conversion of the constrained optimization problem
+to an unconstrained optimization problem, which we accomplished with a combination of reciprocal barriers
+and quadratic penalties. The limitations on the variance in thrust from one time step to the next is a rigid constraint
+and so we use a barrier for that. The use of a reciprocal barrier rather than a log barrier is simply down to the
+performance of the solver, possibly due to the effect on the numerical differentiation that was employed.
+
+The restriction on going outside of the convex region also \emph{appears} to be a rigid constraint and, in a more
+sophisticated solver, might indeed be one. There is nevertheless a subtle problem that can arise when using a barrier
+to enforce the region boundaries. We discussed earlier the need for a trivial initial guess for our problem because
+just finding a feasible trajectory that remains in the boundary is not necessarily an easy problem to solve. The
+zero vector is at trivial initial guess for the case when the ship is stopped to begin with, but what happens when
+the subproblem requires that the ship has a nonzero initial velocity? Then the zero vector might not constitute a 
+valid initial guess anymore if, over the course of all of the time steps, the ship drifts outside of the boundaries,
+causing the objective function to go to infinity before the solver can even begin. By using penalties for the boundaries,
+we can allow ``invalid'' trajectories while still achieving valid, or almost valid, ones when the solver terminates.
+To compensate for the potential violation of the constraint, we can specify that the polygons should be made larger
+than the obstacles that they actually represent.
+
+In fact, our initial guess for the trajectory can't be the zero vector, because that might violate the thrust variance
+constraints if the initial thrust is required to be nonzero. We can still trivially initialize our vector to 
+satisfy this constraint by setting the thrust variables for the first time step to the initial thrust values, and ramping it
+to zero as quickly as possible in subsequent time steps.
+The overall maximum thrust at any given time is not likely to be large due
+to the constraint that the ship must be able to stop,
+so hopefully having non-zero thrust as an initial guess will not result in the initial trajectory falling so far
+outside of the boundary that numerical errors prevent the solver from pulling it back in.
+
 \end{document}
