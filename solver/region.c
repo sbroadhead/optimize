@@ -215,6 +215,7 @@ static double objective(const double *x, const region_params_t *params)
 
     PENALTY(vec_sqnorm(v[prev]), 0);
     PENALTY(vec_sqnorm(vec_subtract(p[prev], params->p_n)), 0);
+    PENALTY(square(omega[prev]), 0);
 
     for (i = 1; i < params->N; i++) {
         CONSTRAINT(square(l[i] - l[i-1]), square(params->dt));
@@ -282,7 +283,8 @@ region_result_t compute_trajectory(double *l, double *r, region_params_t *params
     param.linesearch = LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE;
     param.past = 100;
     param.delta = 1e-4;
-    param.m = 15;
+    param.max_linesearch = 1000;
+    param.m = 5;
 
     ret = lbfgs(n*2, x, &fx, evaluate, progress, params, &param);
     memcpy(l, x, sizeof(l[0])*n);
