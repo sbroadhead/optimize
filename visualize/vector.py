@@ -47,4 +47,6 @@ def norm(v):
     return math.sqrt(squared_norm(v))
 
 def normalized(v):
+    if norm(v) == 0:
+        return v
     return v/norm(v)

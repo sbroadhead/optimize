@@ -111,7 +111,7 @@ destination, all the while knowing that we can stop if we must.
 
 %%%%%
 
-\chapter{Finding a Trajectory in a Convex Region}
+\chapter{Finding a Trajectory in a Convex Region} \label{chap:subregion}
 The majority of the work we did focused on the subproblem of finding feasible
 trajectories within a convex region. This is the aspect of the problem that utilizes
 continuous nonlinear optimization methods and so this is where we devoted most
@@ -379,12 +379,12 @@ to avoid accumulating massive errors over the whole trajectory.
 
 \section{Optimizing the Trajectory}
 Before we can optimize the trajectory in our region, we must decide what it means to
-be an optimal trajectory. There are some necessary constraints that we want to obey always. Specifically,
+be an optimal trajectory. There are some necessary constraints that we want to strictly enforce. Specifically,
 the trajectory should never leave our convex sub-region, the ship should come to a stop at the end of
 the trajectory, and the thruster values should not vary too rapidly between time steps.
 
 The obvious formulation of the problem might be something like ``find the trajectory that reaches the destination
-in the minimal time such that the final position is sufficiently near the destination''. There are a couple of problem
+in the minimal time such that the final position is sufficiently near the destination''. There are a couple of problems
 with this idea. For one, since we chose to use fixed time steps, we don't have a direct way of measuring how
 long it takes to reach the destination. Another problem is that every optimization problem requires an initial guess---one
 which satisfies all the constraints---and the problem of finding an initial trajectory that winds up at the destination
@@ -421,7 +421,7 @@ values of the variables, if applicable.
 
 This is not a definitive objective function and given more time, more tuning could be done. For example,
 it might be advantageous (or even necessary) to penalize angular velocity at the end of the trajectory to 
-avoid spinning wildly out of the control, or to try to fix the angle of the ship at the end.
+avoid spinning wildly out of control, or to try to fix the angle of the ship at the end.
 These types of modifications can be made as necessary.
 
 \section{Solving with L-BFGS}
@@ -440,7 +440,7 @@ The restriction on going outside of the convex region also \emph{appears} to be 
 sophisticated solver, might indeed be one. There is nevertheless a subtle problem that can arise when using a barrier
 to enforce the region boundaries. We discussed earlier the need for a trivial initial guess for our problem because
 just finding a feasible trajectory that remains in the boundary is not necessarily an easy problem to solve. The
-zero vector is at trivial initial guess for the case when the ship is stopped to begin with, but what happens when
+zero vector is a trivial initial guess for the case when the ship is stopped to begin with, but what happens when
 the subproblem requires that the ship has a nonzero initial velocity? Then the zero vector might not constitute a 
 valid initial guess anymore if, over the course of all of the time steps, the ship drifts outside of the boundaries,
 causing the objective function to go to infinity before the solver can even begin. By using penalties for the boundaries,
@@ -542,7 +542,7 @@ types of algorithms that, for various reasons, failed to provide usable solution
 Using a domain-specific tool like the AMPL programming language has benefits
 when trying to solve non-linear constrained optimization problems because it
 allows a much higher level description of the problem than a C solver, for instance.
-Still, AMPL as a language is that it has a steep learning curve; AMPL (and the
+Still, AMPL as a language has a steep learning curve; AMPL (and the
 resources available online) assumes that you are extremely comfortable with
 formulating optimization
 problems and even comfortable writing them in other languages. That being said
@@ -557,7 +557,7 @@ level of the project completeness. Therefore, the AMPL code was developed in
 three distinct parts: simple movement in one direction with constrained velocity
 and no acceleration; simple movement in one direction with constrained velocity
 and acceleration with set time intervals; and simple rotation with constrained
-velocity, acceleration, and moment of inertia. The three parts respectively optmized the
+velocity, acceleration, and moment of inertia. The three parts respectively optimized the
 following variables: time, force input/output required, and energy.
 Using these three development pathways we were able to solve some of the major
 optimizing challenges, albeit separately.
@@ -571,10 +571,10 @@ tradeoff while moving the object, subject to the velocity and acceleration from
 kinematic relationships. 
 
 The second pathway allows for examining how an object needs to be constrained 
-and tests minimizing time as opposed to energy expenditure (per movement). The
+and tests minimizing time as opposed to energy expenditure (per movement).
 We set the parameters $\mathbf{x}_0$ and $\mathbf{x}_\text{final}$ for initial and
 final position, $\mathbf{v}_0$ and $\mathbf{v}_\text{final}$ for
-intial and final velocity and $\mathbf{x}_i$, $\mathbf{v}_i$, $\mathbf{a}_i$
+initial and final velocity and $\mathbf{x}_i$, $\mathbf{v}_i$, $\mathbf{a}_i$
 for discretizations of position,
 velocity, and acceleration respectively, for $1 \leq i \leq N$ where $N$
 is the number of discrete
@@ -636,7 +636,161 @@ function with numerical differentiation.
 
 \chapter{Picking a Convex Subregion}
 Now that we have a method for finding a trajectory within a convex subregion, we
-need to find a way to integrate that into the larger problem.
+need to find a way to integrate that into the larger problem. Due to time constraints,
+this part of the problem was not completed to the point where it could be integrated
+with the solver from Chapter~\ref{chap:subregion}, but we do have a sketch of an
+idea that could be used to select the convex subregions.
+
+We need two things in order to compute a trajectory: a visible destination point, and
+a convex subregion containing both that point and the ship. We could choose one or the
+other first, but we determined that it is probably more flexible to pick a point to
+work towards, and then generate a convex subregion containing it. In fact, due to the
+nature of the solver, the subregion may not even need to contain the point, because it will
+automatically get as close to it as possible. However, due to the use of penalties instead
+of barriers for the boundaries, this will almost certainly generate poor trajectories.
+
+\section{Picking a Point Using Raycasting} \label{sec:raycast}
+Since we want to pick where to go based only on what is visible from the current
+location of the ship, we decided that we should pick the one that maximizes some
+appropriate objective function.
+
+Picking the objective function is not easy, and we have to balance many criteria
+and consider several special cases. For instance, naively picking the point that is closest to
+the goal will not work in the case that the goal is directly behind a wall that is oriented
+orthogonally to the ship's current trajectory. In that case, the closest point will
+always be the one on the wall directly in front of the ship and it will eventually crash
+into the wall. Another option we considered is picking the farthest point from the ship's current
+position that is still closer to the goal, but consider the case where the field is symmetrical:
+in this case, once the ship passes the line of symmetry, the furthest feasible point may jump to
+the other side of the map, causing the ship to ping-pong back and forth.
+
+Although we have not been able to test the practicality of specific objective
+functions due to lack of time to implement this process into the solver, we do have
+a real-time simulation of the ship's physics with a visualizer for the ray casting and
+point selection process. This process is visible in Figures~\ref{fig:ray1}, \ref{fig:ray2},
+\ref{fig:ray3}, and \ref{fig:ray4}. Only candidate rays are drawn; that is, rays whose
+intersection points are further from the goal than the ship's current location are discarded.
+Each intersection point is then scored using the objective function, and the appropriate
+one chosen.
+
+\begin{figure}
+\begin{minipage}{\linewidth}
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{ray1.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:ray1}Initial state of the map}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{ray2.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:ray2}Ray casting turned on---note the chosen target point
+        (purple dot) on the north edge of the map}\end{minipage}
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{ray3.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:ray3}Moving towards the target point}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\linewidth}
+    \centering
+    
+    \includegraphics[width=\linewidth]{ray4.png}
+    \captionsetup{singlelinecheck=off}
+    \caption[.]{\label{fig:ray4} In sight of the target point---the objective function strongly
+        favours points very near the goal}
+\end{minipage}
+\end{minipage}
+\end{figure}
+
+\section{Choosing an Objective Function}
+We must balance several criteria in choosing the target point. We always want our target
+point to be as far away from us as possible, but we also want to try to keep moving in the direction that we're already
+moving in if possible. We also want to encourage target points that keep the ship's velocity oriented towards the
+final goal. Finally, we want points that are extremely near the goal to have an extremely high score.
+To that end, we place a small dummy obstacle around the goal point so that the ray caster will treat it as a potential
+target.
+
+After some trial-and-error, we arrived at the following objective function given a set of ray intersections $C$:
+\newcommand*{\normalized}[1]{\frac{#1}{\| #1 \|}}
+\begin{equation*}
+\begin{aligned}
+& \underset{\mathbf{x} \in C}{\text{maximize}}
+& & \frac{\| \mathbf{x} - \mathbf{p} \| \Big[\normalized{\mathbf{x} - \mathbf{p}} \cdot \normalized{\mathbf{v}}\Big] 
+    \Big[\normalized{\mathbf{x} - \mathbf{p}} \cdot \normalized{\mathbf{p}_\text{final} - \mathbf{p}}\Big]}
+    {\| \mathbf{p}_\text{final} - \mathbf{x} \|} \\
+& \text{subject to}
+&& \| \mathbf{x} - \mathbf{p}_\text{final} \| < \| \mathbf{p} - \mathbf{p}_\text{final} \| \\
+\end{aligned}
+\end{equation*}
+Note that the distance from the candidate point to the final goal is in the denominator, so points that are very
+near the goal will have a very high score.
+
+Trials using a mouse-driven simulator of the ship physics which recalculates the target point a few times per second
+showed promising results (see Figures~\ref{fig:ray1}, \ref{fig:ray2}, \ref{fig:ray3}, and \ref{fig:ray4})
+
+\section{Choosing a Convex Region}
+Once we have chosen a point, we must calculate a convex region that contains it.
+We did not settle on a method for doing this due to time constraints, but we considered a few 
+options.
+
+One possible option is to use a variation of Voronoi tesselation that can tesselate non-convex
+areas, although this would potentially require a different choice of target point than the one given in
+Section~\ref{sec:raycast} (ideally one that is not touching a boundary). Voronoi tesselation is guaranteed
+to generate convex subregions, although we would need to reverse the order of operations if we were to use this
+method---once we tesselate the map, we would need to pick a target point inside the cell containing the
+ship.
+
+Another option would be to use a simpler method of tesselation, like triangulation, although
+simple triangulation algorithms might contain near-degenerate triangles and other undesirable
+artifacts that the solver could not cope with.
+
+The option that we consider most promising is to use the ray casting method once again.
+By scanning the ray intersections to the left and right of the target point, we can look for
+a pair (or set) of them that create a reasonable region in which to navigate towards the target
+point.
+Unfortunately, we did not have time to evaluate possible objective functions for the selection
+of these points.
+
+Once we have a method for selecting a convex subregion, we can iterate the solver to guide the ship to
+its final goal. The algorithm looks like this:
+\begin{enumerate}
+    \item \label{item:move} Compute a target point towards which to move.
+    \item \label{item:region} Compute a convex region containing both the ship's current point and the chosen target
+        point.
+    \item \label{item:trajectory} Compute a trajectory within the convex region from the ship's position to the
+        target point.
+    \item \label{item:step} Follow the trajectory for some small number of time steps and then discard the trajectory and
+        go back to Step~\ref{item:move} until the ship is sufficiently close to the goal. 
+\end{enumerate}
+
+\chapter*{Conclusion and Future Work}
+\addcontentsline{toc}{chapter}{Conclusion and Future Work}
+In this project we have demonstrated the specification of a physically constrained
+problem in terms of a nonlinear optimization problem, use of an appropriate algorithm for
+minimization, conversion of a constrained optimization problem to an unconstrained one,
+and an understanding of the effect of the objective function and its gradient on the
+performance of a solver.
+
+Although we did not complete a working implementation of the general path finding
+algorithm, we feel that we did implement the parts of the project that most reflect
+our understanding of nonlinear optimization methods. The remaining parts of the algorithm,
+while important, mainly deal with computational geometry and discrete optimization.
+
+Had we had more time to focus on these things, we believe that we could have successfully
+implemented a path-finding algorithm based on the methods we outlined in this report.
+Alternatives to many of our design decisions should be investigated. For example, using
+a differentiable thrust profile function may improve the performance of the solver, and
+a faster way of evaluating the objective function and gradient would allow
+more robust path-finding techniques such as backtracking. Many of our choices were based
+on what we could get to work in practice, so a more experienced approach would likely
+result in a better solution.
+
 
 
 \bibliographystyle{plain}

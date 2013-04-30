@@ -18,6 +18,9 @@ class Problem(object):
 
     def __init__(self, filename):
         self.load_from_file(filename)
+        self.draw_sensor = False
+        self.p2s = lambda x: x
+        self.v2s = lambda x: x
 
     def load_from_file(self, filename):
         with open(filename, 'r') as f:
@@ -138,14 +141,20 @@ def arrow(window, (x1, y1), (x2, y2), color=(255, 255, 255), width=1):
 def update_sensor_data(ship, problem):
     """Cast rays from ship to find intersections with obstacles and pick out
     the best target point"""
+    mouse_pos = pygame.mouse.get_pos()
+#    target_dir = normalized(Vector(*mouse_pos) - Vector(*problem.p2s(ship.position)))
+#    target_dir.y = -target_dir.y
     target_dir = normalized(problem.end_position - ship.position)
     max_score = 0
     ship.sensor_data = []
 
     def score(p):
-        if norm(ship.position - problem.end_position) > norm(p - problem.end_position):
+        if norm(ship.position - problem.end_position) < norm(p - problem.end_position):
             return -1
-        return 1/norm(problem.end_position - p) + norm(ship.position - p) + dot(ship.velocity, p - ship.position) + dot(ship.direction, p - ship.position)
+        s = (norm(ship.position - p)
+                * dot(normalized(p - ship.position), normalized(ship.velocity))
+                * dot(normalized(p - ship.position), normalized(problem.end_position - ship.position))) / (norm(problem.end_position - p))
+        return s
 
 
     newpolys = problem.polygons[:]
@@ -165,13 +174,73 @@ def update_sensor_data(ship, problem):
             if sc > max_score:
                 max_score = sc
                 ship.target = ship.position+dist*ray_dir
-            if dist < float("inf"):
+            if dist < float("inf") and sc != -1:
                 ship.sensor_data.append(ship.position+dist*ray_dir)
 
 
 def draw(window, problem, ship):
     """Draw the state of the world"""
-    window.fill((0, 0, 0))
+    window.fill((255, 255, 255))
+
+    p2s = problem.p2s
+    v2s = problem.v2s
+
+    # Draw sensor data
+    if problem.draw_sensor:
+        for p in ship.sensor_data:
+            pygame.draw.line(window, (0, 200, 0), p2s(ship.position), p2s(p), 1)
+
+    # Draw obstacles
+    for poly in problem.polygons:
+        pygame.draw.polygon(window, (0, 0, 0), [p2s(v) for v in poly])
+
+    # Draw ship
+    r = v2s((ship.radius, ship.radius))
+    p = p2s(ship.position)
+    pygame.draw.circle(window, (255, 200, 200), p, r[0], 0)
+    pygame.draw.circle(window, (0, 0, 0), p, r[0], 1)
+
+    # Draw direction arrow
+    arrow_end = ship.position + ship.radius * ship.direction
+    arrow(window, p, p2s(arrow_end), (0, 0, 255))
+
+    # Draw thrust arrows
+    dperp = Vector(-ship.direction.y, ship.direction.x)
+    if ship.left_thrust:
+        arrow_start = ship.position - ship.radius * dperp
+        arrow_end = arrow_start - ship.left_thrust * ship.direction
+        arrow(window, p2s(arrow_start), p2s(arrow_end), (255, 128, 0))
+    if ship.right_thrust:
+        arrow_start = ship.position + ship.radius * dperp
+        arrow_end = arrow_start - ship.right_thrust * ship.direction
+        arrow(window, p2s(arrow_start), p2s(arrow_end), (255, 128, 0))
+
+    # Draw end position
+    pygame.draw.circle(window, (0, 255, 255), p2s(problem.end_position), r[0], 0)
+    pygame.draw.circle(window, (0, 0, 0), p2s(problem.end_position), r[0], 1)
+
+    # Draw target position
+    if ship.target:
+        pygame.draw.circle(window, (255, 0, 255), p2s(ship.target), 5, 0)
+
+def main():
+    """Main loop"""
+
+    if len(sys.argv) < 2:
+        print 'Usage: visualize.py <problem> [solution]'
+        sys.exit(1)
+
+    problem = Problem(sys.argv[1])
+    ship = Ship()
+
+    ship.position = problem.start_position
+    ship.direction = problem.start_direction
+    ship.radius = problem.radius
+    ship.mass = problem.mass
+
+    pygame.init()
+    window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    fps = pygame.time.Clock()
 
     x_min = min(problem.start_position.x - problem.radius,
             problem.end_position.x - problem.radius,
@@ -202,67 +271,18 @@ def draw(window, problem, ship):
         x_min -= (width - height) / 2
 
     # point translation from world to screen coords
-    p2s = lambda v: (int((v[0] - x_min) / width * WINDOW_WIDTH),
+    problem.p2s = lambda v: (int((v[0] - x_min) / width * WINDOW_WIDTH),
         WINDOW_HEIGHT - (int((v[1] - y_min) / height * WINDOW_HEIGHT)))
+    # point translation from screen to world coords
+    problem.s2p = lambda v: (v[0] / float(WINDOW_WIDTH) * width + x_min,
+        ((WINDOW_HEIGHT - v[1]) / float(WINDOW_HEIGHT) * height + y_min))
     # vector translation from world to screen coords
-    v2s = lambda p: (int(p[0] / width * WINDOW_WIDTH),
+    problem.v2s = lambda p: (int(p[0] / width * WINDOW_WIDTH),
         WINDOW_HEIGHT - (int(p[1] / height * WINDOW_HEIGHT)))    
 
-    # Draw obstacles
-    for poly in problem.polygons:
-        pygame.draw.polygon(window, (255, 0, 0), [p2s(v) for v in poly])
-
-    # Draw ship
-    r = v2s((ship.radius, ship.radius))
-    p = p2s(ship.position)
-    pygame.draw.circle(window, (0, 0, 255), p, r[0], 1)
-
-    # Draw direction arrow
-    arrow_end = ship.position + ship.radius * ship.direction
-    arrow(window, p, p2s(arrow_end), (0, 255, 0))
-
-    # Draw thrust arrows
-    dperp = Vector(-ship.direction.y, ship.direction.x)
-    if ship.left_thrust:
-        arrow_start = ship.position - ship.radius * dperp
-        arrow_end = arrow_start - ship.left_thrust * ship.direction
-        arrow(window, p2s(arrow_start), p2s(arrow_end), (255, 128, 0))
-    if ship.right_thrust:
-        arrow_start = ship.position + ship.radius * dperp
-        arrow_end = arrow_start - ship.right_thrust * ship.direction
-        arrow(window, p2s(arrow_start), p2s(arrow_end), (255, 128, 0))
-
-    # Draw end position
-    pygame.draw.circle(window, (0, 255, 255), p2s(problem.end_position), r[0], 0)
-
-    # Draw sensor data
-    #for p in ship.sensor_data:
-    #    pygame.draw.circle(window, (255, 255, 0), p2s(p), 5, 0)
-
-    # Draw target position
-    if ship.target:
-        pygame.draw.circle(window, (255, 0, 255), p2s(ship.target), 5, 0)
-
-def main():
-    """Main loop"""
-
-    if len(sys.argv) < 2:
-        print 'Usage: visualize.py <problem> [solution]'
-        sys.exit(1)
-
-    problem = Problem(sys.argv[1])
-    ship = Ship()
-
-    ship.position = problem.start_position
-    ship.direction = problem.start_direction
-    ship.radius = problem.radius
-    ship.mass = problem.mass
-
-    pygame.init()
-    window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    fps = pygame.time.Clock()
-
+    
     counter = 0
+    click_pos = (0, 0)
 
     # Message pump
     while True:
@@ -273,7 +293,18 @@ def main():
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     pygame.event.post(pygame.event.Event(QUIT))
-        
+                elif event.key == K_v:
+                    problem.draw_sensor = not problem.draw_sensor
+            elif event.type == MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    click_pos = pygame.mouse.get_pos()
+                    ship.position = Vector(*problem.s2p(click_pos))
+            elif event.type == MOUSEMOTION:
+                if pygame.mouse.get_pressed()[0]:
+                    drag_pos = pygame.mouse.get_pos()
+                    v = Vector(*drag_pos) - Vector(*click_pos)
+                    v.y = -v.y
+                    ship.velocity = 1.0/20.0 * v
         draw(window, problem, ship)
 
         pygame.display.update()
